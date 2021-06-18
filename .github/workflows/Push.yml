@@ -23,7 +23,7 @@ jobs:
     - name: Log into registry
       run: |
         echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} --password-stdin
     - name: Build dasbboard image
       run: |
         go env
