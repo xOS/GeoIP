@@ -11,6 +11,7 @@ type Reader interface {
 	Country(net.IP) (Country, error)
 	City(net.IP) (City, error)
 	ASN(net.IP) (ASN, error)
+	ISP(net.IP) (ISP, error)
 	IsEmpty() bool
 }
 
@@ -36,14 +37,22 @@ type ASN struct {
 	AutonomousSystemOrganization string
 }
 
+type ISP struct {
+	AutonomousSystemNumber       uint
+	AutonomousSystemOrganization string
+	ISP                          string
+	Organization                 string
+}
+
 type geoip struct {
 	country *geoip2.Reader
 	city    *geoip2.Reader
 	asn     *geoip2.Reader
+	isp     *geoip2.Reader
 }
 
-func Open(countryDB, cityDB string, asnDB string) (Reader, error) {
-	var country, city, asn *geoip2.Reader
+func Open(countryDB, cityDB string, asnDB string, ispDB string) (Reader, error) {
+	var country, city, asn, isp *geoip2.Reader
 	if countryDB != "" {
 		r, err := geoip2.Open(countryDB)
 		if err != nil {
@@ -65,7 +74,14 @@ func Open(countryDB, cityDB string, asnDB string) (Reader, error) {
 		}
 		asn = r
 	}
-	return &geoip{country: country, city: city, asn: asn}, nil
+	if ispDB != "" {
+		r, err := geoip2.Open(ispDB)
+		if err != nil {
+			return nil, err
+		}
+		isp = r
+	}
+	return &geoip{country: country, city: city, asn: asn, isp: isp}, nil
 }
 
 func (g *geoip) Country(ip net.IP) (Country, error) {
@@ -150,6 +166,24 @@ func (g *geoip) ASN(ip net.IP) (ASN, error) {
 		asn.AutonomousSystemOrganization = record.AutonomousSystemOrganization
 	}
 	return asn, nil
+}
+
+func (g *geoip) ISP(ip net.IP) (ISP, error) {
+	isp := ISP{}
+	if g.isp == nil {
+		return isp, nil
+	}
+	record, err := g.isp.ISP(ip)
+	if err != nil {
+		return isp, err
+	}
+	if record.AutonomousSystemOrganization != "" {
+		isp.ISP = record.ISP
+	}
+	if record.AutonomousSystemOrganization != "" {
+		isp.Organization = record.Organization
+	}
+	return isp, nil
 }
 
 func (g *geoip) IsEmpty() bool {

@@ -51,8 +51,10 @@ type Response struct {
 	Latitude   float64              `json:"latitude,omitempty"`
 	Longitude  float64              `json:"longitude,omitempty"`
 	Timezone   string               `json:"time_zone,omitempty"`
+	ISP        string               `json:"isp,omitempty"`
 	ASN        string               `json:"asn,omitempty"`
 	ASNOrg     string               `json:"asn_org,omitempty"`
+	Org        string               `json:"org,omitempty"`
 	Hostname   string               `json:"hostname,omitempty"`
 	UserAgent  *useragent.UserAgent `json:"user_agent,omitempty"`
 }
@@ -137,6 +139,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	country, _ := s.gr.Country(ip)
 	city, _ := s.gr.City(ip)
 	asn, _ := s.gr.ASN(ip)
+	isp, _ := s.gr.ISP(ip)
 	var hostname string
 	if s.LookupAddr != nil {
 		hostname, _ = s.LookupAddr(ip)
@@ -160,7 +163,9 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Longitude:  city.Longitude,
 		Timezone:   city.Timezone,
 		ASN:        autonomousSystemNumber,
+		ISP:        isp.ISP,
 		ASNOrg:     asn.AutonomousSystemOrganization,
+		Org:        isp.Organization,
 		Hostname:   hostname,
 	}
 	s.cache.Set(ip, response)
@@ -237,6 +242,24 @@ func (s *Server) CLIASNHandler(w http.ResponseWriter, r *http.Request) *appError
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
 	fmt.Fprintf(w, "%s\n", response.ASN)
+	return nil
+}
+
+func (s *Server) CLIISPHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.ISP)
+	return nil
+}
+
+func (s *Server) CLIORGHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.Org)
 	return nil
 }
 
@@ -431,6 +454,8 @@ func (s *Server) Handler() http.Handler {
 		r.Route("GET", "/city", s.CLICityHandler)
 		r.Route("GET", "/coordinates", s.CLICoordinatesHandler)
 		r.Route("GET", "/asn", s.CLIASNHandler)
+		r.Route("GET", "/isp", s.CLIISPHandler)
+		r.Route("GET", "/org", s.CLIORGHandler)
 	}
 
 	// Browser

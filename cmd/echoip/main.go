@@ -3,9 +3,8 @@ package main
 import (
 	"flag"
 	"log"
-	"strings"
 	"os"
-	
+	"strings"
 
 	"github.com/mpolden/echoip/http"
 	"github.com/mpolden/echoip/iputil"
@@ -32,7 +31,8 @@ func main() {
 	countryFile := flag.String("f", "", "Path to GeoIP country database")
 	cityFile := flag.String("c", "", "Path to GeoIP city database")
 	asnFile := flag.String("a", "", "Path to GeoIP ASN database")
-	listen := flag.String("l", ":8080", "Listening address")
+	ispFile := flag.String("i", "", "Path to GeoIP ISP database")
+	listen := flag.String("l", ":1212", "Listening address")
 	reverseLookup := flag.Bool("r", false, "Perform reverse hostname lookups")
 	portLookup := flag.Bool("p", false, "Enable port lookup")
 	template := flag.String("t", "html", "Path to template dir")
@@ -47,7 +47,7 @@ func main() {
 		return
 	}
 
-	r, err := geo.Open(*countryFile, *cityFile, *asnFile)
+	r, err := geo.Open(*countryFile, *cityFile, *asnFile, *ispFile)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -5,22 +5,44 @@
     font-family: "Open Sans", sans-serif;
   }
   pre {
-    font-family: "Monaco", "Menlo", "Consolas", "Courier New", monospace;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     white-space: pre-wrap; /* Since CSS 2.1 */
     white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
     white-space: -pre-wrap; /* Opera 4-6 */
     white-space: -o-pre-wrap; /* Opera 7 */
     word-wrap: break-word;
   }
-  a {
-    /* background: #e3e3e3; */
-    text-decoration: underline;
-    color: #000;
-  }
-  a:hover,
-  active {
-    background: #d7d7d7;
-  }
+body {
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+  background: rgb(255 255 255 / 50%);
+}
+
+a {
+  color: #4caf50;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+a, a:focus, button, button:focus {
+    outline: 0;
+}
+
+a:hover {
+    color: #4caf50;
+  text-decoration: none;
+    }
+
+::after, ::before {
+  border: 0px;
+  border-radius: 0px;
+  box-sizing: border-box;
+  background: rgb(255 255 255 / 78%);
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+}
   .ip {
     border: 1px solid #cbcbcb;
     background: #f2f2f2;

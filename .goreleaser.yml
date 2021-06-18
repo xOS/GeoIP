@@ -1,0 +1,35 @@
+before:
+  hooks:
+    - go mod tidy -v
+builds:
+  - id: geoip
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - arm
+      - arm64
+      - amd64
+    gomips:
+      - softfloat
+    ignore:
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: arm64
+    main: ./cmd/echoip
+    binary: geoip
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{.ProjectName}}"
+archives:
+  - name_template: "geoip_{{ .Os }}_{{ .Arch }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

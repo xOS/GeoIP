@@ -5,6 +5,13 @@
 A simple service for looking up your IP address. This is the code that powers
 https://ifconfig.co.
 
+## 编译后运行
+```bash
+./geoip -l 0.0.0.0:1212 -a /etc/geoip/data/GeoLite2-ASN.mmdb -i /etc/geoip/data/GeoIP2-ISP.mmdb -c /etc/geoip/data/GeoLite2-City.mmdb -f /etc/geoip/data/GeoLite2-Country.mmdb -H x-forwarded-for -r -s -p
+```
+
+
+
 ## Usage
 
 Just the business, please:
