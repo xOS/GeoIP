@@ -30,6 +30,10 @@ func (t *testDb) ASN(net.IP) (geo.ASN, error) {
 	return geo.ASN{AutonomousSystemNumber: 59795, AutonomousSystemOrganization: "Hosting4Real"}, nil
 }
 
+func (t *testDb) ISP(net.IP) (geo.ISP, error) {
+	return geo.ISP{AutonomousSystemNumber: 59795, AutonomousSystemOrganization: "Hosting4Real"}, nil
+}
+
 func (t *testDb) IsEmpty() bool { return false }
 
 func testServer() *Server {
