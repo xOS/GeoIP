@@ -119,7 +119,7 @@ func TestDisabledHandlers(t *testing.T) {
 	server := testServer()
 	server.LookupPort = nil
 	server.LookupAddr = nil
-	server.gr, _ = geo.Open("", "", "")
+	server.gr, _ = geo.Open("", "", "", "")
 	s := httptest.NewServer(server.Handler())
 
 	var tests = []struct {
