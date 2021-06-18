@@ -30,7 +30,7 @@ jobs:
     - name: Push dasbboard image
       run: |
         GHRC_IMAGE_NAME=$(echo "ghcr.io/${{ github.repository_owner }}/geoip" | tr '[:upper:]' '[:lower:]')
-        docker tag geoiop $GHRC_IMAGE_NAME
+        docker tag geoip $GHRC_IMAGE_NAME
         docker push $GHRC_IMAGE_NAME
     - name: enable experimental docker features
       run: |
