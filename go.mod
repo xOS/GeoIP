@@ -1,4 +1,4 @@
-module github.com/mpolden/echoip
+module github.com/xos/geoip
 
 go 1.13
 
