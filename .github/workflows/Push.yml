@@ -26,7 +26,6 @@ jobs:
     - name: Build dasbboard image
       run: |
         go env
-        go test -v ./... 
         docker build -t geoip -f Dockerfile .
     - name: Push dasbboard image
       run: |
