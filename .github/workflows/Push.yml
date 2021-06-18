@@ -33,7 +33,7 @@ jobs:
         GHRC_IMAGE_NAME=$(echo "ghcr.io/${{ github.repository_owner }}/geoip" | tr '[:upper:]' '[:lower:]')
         docker tag geoip $GHRC_IMAGE_NAME
         docker push $GHRC_IMAGE_NAME
-        docker tag nangle/geoip
+        docker tag geoip nangle/geoip
         docker push nangle/geoip
     - name: enable experimental docker features
       run: |
