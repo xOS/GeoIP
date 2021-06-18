@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 	"log"
-
+	"strings"
 	"os"
+	
 
 	"github.com/mpolden/echoip/http"
 	"github.com/mpolden/echoip/iputil"
@@ -14,14 +15,7 @@ import (
 type multiValueFlag []string
 
 func (f *multiValueFlag) String() string {
-	vs := ""
-	for i, v := range *f {
-		vs += v
-		if i < len(*f)-1 {
-			vs += ", "
-		}
-	}
-	return vs
+	return strings.Join([]string(*f), ", ")
 }
 
 func (f *multiValueFlag) Set(v string) error {
