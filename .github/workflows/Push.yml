@@ -21,18 +21,18 @@ jobs:
     - name: build and test
       run: make
     - name: Log into registry
-        run: |
-          echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+      run: |
+        echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
     - name: Build dasbboard image
-        run: |
-          go env
-          go test -v ./... 
-          docker build -t geoip -f Dockerfile .
+      run: |
+        go env
+        go test -v ./... 
+        docker build -t geoip -f Dockerfile .
     - name: Push dasbboard image
-        run: |
-          GHRC_IMAGE_NAME=$(echo "ghcr.io/${{ github.repository_owner }}/geoip" | tr '[:upper:]' '[:lower:]')
-          docker tag geoiop $GHRC_IMAGE_NAME
-          docker push $GHRC_IMAGE_NAME
+      run: |
+        GHRC_IMAGE_NAME=$(echo "ghcr.io/${{ github.repository_owner }}/geoip" | tr '[:upper:]' '[:lower:]')
+        docker tag geoiop $GHRC_IMAGE_NAME
+        docker push $GHRC_IMAGE_NAME
     - name: enable experimental docker features
       run: |
         echo '{"experimental":true}' | sudo tee /etc/docker/daemon.json
