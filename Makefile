@@ -1,5 +1,5 @@
 DOCKER ?= docker
-DOCKER_IMAGE ?= xos/geoip
+DOCKER_IMAGE ?= nangle/geoip
 OS := $(shell uname)
 ifeq ($(OS),Linux)
 	TAR_OPTS := --wildcards
