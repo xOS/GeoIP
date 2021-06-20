@@ -1,13 +1,13 @@
-# echoip
+# geoip
 
-![Build Status](https://github.com/xos/geoip/workflows/Push/badge.svg)
+![Build Status](https://github.com/xOS/GeoIP/workflows/Push/badge.svg)
 
 A simple service for looking up your IP address. This is the code that powers
 https://ifconfig.co.
 
 ## 编译后运行
 ```bash
-./geoip -l 0.0.0.0:1212 -a /etc/geoip/data/GeoLite2-ASN.mmdb -i /etc/geoip/data/GeoIP2-ISP.mmdb -c /etc/geoip/data/GeoLite2-City.mmdb -f /etc/geoip/data/GeoLite2-Country.mmdb -H x-forwarded-for -r -s -p
+./geoip -l 0.0.0.0:1212 -a data/GeoLite2-ASN.mmdb -i data/GeoIP2-ISP.mmdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -H x-forwarded-for -r -s -p
 ```
 
 
@@ -102,7 +102,7 @@ between IPv4 and IPv6 lookup.
 Compiling requires the [Golang compiler](https://golang.org/) to be installed.
 This package can be installed with `go get`:
 
-`go get github.com/mpolden/echoip/...`
+`go get github.com/mpolden/geoip/...`
 
 For more information on building a Go project, see the [official Go
 documentation](https://golang.org/doc/code.html).
@@ -110,9 +110,9 @@ documentation](https://golang.org/doc/code.html).
 ## Docker image
 
 A Docker image is available on [Docker
-Hub](https://hub.docker.com/r/mpolden/echoip), which can be downloaded with:
+Hub](https://hub.docker.com/r/mpolden/geoip), which can be downloaded with:
 
-`docker pull mpolden/echoip`
+`docker pull mpolden/geoip`
 
 ## Deploying to Heroku
 
@@ -123,8 +123,8 @@ Click the button below to automatically build and deploy the application to Hero
 ### Usage
 
 ```
-$ echoip -h
-Usage of echoip:
+$ geoip -h
+Usage of geoip:
   -C int
     	Size of response cache. Set to 0 to disable
   -H value

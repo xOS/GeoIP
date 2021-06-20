@@ -23,7 +23,7 @@ func (f *multiValueFlag) Set(v string) error {
 }
 
 func init() {
-	log.SetPrefix("echoip: ")
+	log.SetPrefix("geoip: ")
 	log.SetFlags(log.Lshortfile)
 }
 

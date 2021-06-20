@@ -11,8 +11,8 @@ RUN make
 FROM scratch
 EXPOSE 8080
 
-COPY --from=build /go/bin/echoip /opt/echoip/
-COPY html /opt/echoip/html
+COPY --from=build /go/bin/geoip /opt/geoip/
+COPY html /opt/geoip/html
 
-WORKDIR /opt/echoip
-ENTRYPOINT ["/opt/echoip/echoip"]
+WORKDIR /opt/geoip
+ENTRYPOINT ["/opt/geoip/geoip"]

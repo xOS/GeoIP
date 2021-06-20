@@ -19,7 +19,7 @@ builds:
         goarch: arm
       - goos: windows
         goarch: arm64
-    main: ./cmd/echoip
+    main: ./cmd/geoip
     binary: geoip
 checksum:
   name_template: "checksums.txt"

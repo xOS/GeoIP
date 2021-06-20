@@ -6,7 +6,7 @@ ifeq ($(OS),Linux)
 endif
 XGOARCH := amd64
 XGOOS := linux
-XBIN := $(XGOOS)_$(XGOARCH)/echoip
+XBIN := $(XGOOS)_$(XGOARCH)/geoip
 
 all: lint test install
 
@@ -24,7 +24,7 @@ lint: check-fmt vet
 install:
 	go install ./...
 
-databases := GeoLite2-City GeoLite2-Country GeoLite2-ASN
+databases := GeoIP2-ISP.mmdb GeoLite2-City GeoLite2-Country GeoLite2-ASN
 
 $(databases):
 ifndef GEOIP_LICENSE_KEY
@@ -32,9 +32,12 @@ ifndef GEOIP_LICENSE_KEY
 endif
 	mkdir -p data
 	@curl -fsSL -m 30 "https://download.maxmind.com/app/geoip_download?edition_id=$@&license_key=$(GEOIP_LICENSE_KEY)&suffix=tar.gz" | tar $(TAR_OPTS) --strip-components=1 -C $(CURDIR)/data -xzf - '*.mmdb'
-	test ! -f data/GeoLite2-City.mmdb || mv data/GeoLite2-City.mmdb data/city.mmdb
-	test ! -f data/GeoLite2-Country.mmdb || mv data/GeoLite2-Country.mmdb data/country.mmdb
-	test ! -f data/GeoLite2-ASN.mmdb || mv data/GeoLite2-ASN.mmdb data/asn.mmdb
+	test ! -f data/GeoLite2-City.mmdb
+	test ! -f data/GeoLite2-Country.mmdb
+	test ! -f data/GeoLite2-ASN.mmdb
+	cd data 
+	wget -N --no-check-certificate https://github.com/xOS/GeoIP/raw/master/data/GeoIP2-ISP.mmdb
+	cd ..
 
 geoip-download: $(databases)
 
@@ -74,4 +77,4 @@ endif
 	@sha256sum $(GOPATH)/bin/$(XBIN)
 
 run:
-	go run cmd/echoip/main.go -a data/asn.mmdb -c data/city.mmdb -f data/country.mmdb -H x-forwarded-for -r -s -p
+	go run cmd/geoip/main.go -a data/GeoLite2-ASN.mmdb -i data/GeoIP2-ISP.mmdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -H x-forwarded-for -r -s -p
