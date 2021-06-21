@@ -156,12 +156,7 @@
                 <th scope="row">原始组织</th>
                 <td>{{ .ISPOrg }}</td>
               </tr>
-              {{ end }}{{ if .Network }}
-              <tr>
-                <th scope="row">IP 范围</th>
-                <td>{{ .Network }}</td>
-              </tr>
-              {{ end }} {{ if .ConnectionType }}
+              {{ end }}{ if .ConnectionType }}
               <tr>
                 <th scope="row">连接类型</th>
                 <td>{{ .ConnectionType }}</td>

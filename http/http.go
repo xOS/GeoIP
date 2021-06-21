@@ -55,7 +55,6 @@ type Response struct {
 	ISPOrg        string               `json:"isp_org,omitempty"`
 	ASN        string               `json:"asn,omitempty"`
 	ASNOrg     string               `json:"asn_org,omitempty"`
-	Network     string               `json:"network,omitempty"`
 	ConnectionType   string               `json:"connection_type,omitempty"`
 	Hostname   string               `json:"hostname,omitempty"`
 	UserAgent  *useragent.UserAgent `json:"user_agent,omitempty"`
@@ -169,7 +168,6 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		ASNOrg:     asn.AutonomousSystemOrganization,
 		ISP:        isp.ISP,
 		ISPOrg:        isp.Organization,
-		Network:        isp.Network,
 		ConnectionType:   conn.ConnectionType,
 		Hostname:   hostname,
 	}
