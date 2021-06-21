@@ -43,7 +43,7 @@ type ISP struct {
 	AutonomousSystemOrganization string
 	ISP                          string
 	Organization                 string
-	Network                 string `maxminddb:"Network"`
+	Network                 string `maxminddb:"network"`
 }
 
 type ConnectionType struct {
@@ -197,8 +197,8 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 	if record.Organization != "" {
 		isp.Organization = record.Organization
 	}
-	if record.Network != "" {
-		isp.Network = record.Network
+	if Network != "" {
+		isp.Network = Network
 	}
 	return isp, nil
 }
