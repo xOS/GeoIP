@@ -106,10 +106,10 @@ func (g *geoip) Country(ip net.IP) (Country, error) {
 	if err != nil {
 		return country, err
 	}
-	if c, exists := record.Country.Names["zh-CN"]; exists {
+	if c, exists := record.Country.Names["en"]; exists {
 		country.Name = c
 	}
-	if c, exists := record.RegisteredCountry.Names["zh-CN"]; exists && country.Name == "" {
+	if c, exists := record.RegisteredCountry.Names["en"]; exists && country.Name == "" {
 		country.Name = c
 	}
 	if record.Country.IsoCode != "" {
@@ -132,11 +132,11 @@ func (g *geoip) City(ip net.IP) (City, error) {
 	if err != nil {
 		return city, err
 	}
-	if c, exists := record.City.Names["zh-CN"]; exists {
+	if c, exists := record.City.Names["en"]; exists {
 		city.Name = c
 	}
 	if len(record.Subdivisions) > 0 {
-		if c, exists := record.Subdivisions[0].Names["zh-CN"]; exists {
+		if c, exists := record.Subdivisions[0].Names["en"]; exists {
 			city.RegionName = c
 		}
 		if record.Subdivisions[0].IsoCode != "" {
