@@ -54,11 +54,11 @@ type geoip struct {
 	city    *geoip2.Reader
 	asn     *geoip2.Reader
 	isp     *geoip2.Reader
-	conn     *geoip2.Reader
+	connectiontype     *geoip2.Reader
 }
 
-func Open(countryDB, cityDB string, asnDB string, ispDB string, connDB string) (Reader, error) {
-	var country, city, asn, isp, conn *geoip2.Reader
+func Open(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB string) (Reader, error) {
+	var country, city, asn, isp, connectiontype *geoip2.Reader
 	if countryDB != "" {
 		r, err := geoip2.Open(countryDB)
 		if err != nil {
@@ -87,14 +87,14 @@ func Open(countryDB, cityDB string, asnDB string, ispDB string, connDB string) (
 		}
 		isp = r
 	}
-	if connDB != "" {
-		r, err := geoip2.Open(connDB)
+	if connectiontypeDB != "" {
+		r, err := geoip2.Open(connectiontypeDB)
 		if err != nil {
 			return nil, err
 		}
-		conn = r
+		connectiontype = r
 	}
-	return &geoip{country: country, city: city, asn: asn, isp: isp, conn: conn}, nil
+	return &geoip{country: country, city: city, asn: asn, isp: isp, connectiontype: connectiontype}, nil
 }
 
 func (g *geoip) Country(ip net.IP) (Country, error) {
@@ -200,18 +200,18 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 }
 
 func (g *geoip) ConnectionType(ip net.IP) (ConnectionType, error) {
-	conn := ConnectionType{}
-	if g.conn == nil {
-		return conn, nil
+	connectiontype := ConnectionType{}
+	if g.connectiontype == nil {
+		return connectiontype, nil
 	}
-	record, err := g.conn.ConnectionType(ip)
+	record, err := g.connectiontype.ConnectionType(ip)
 	if err != nil {
-		return conn, err
+		return connectiontype, err
 	}
 	if record.ConnectionType != "" {
-		conn.ConnectionType = record.ConnectionType
+		connectiontype.ConnectionType = record.ConnectionType
 	}
-	return conn, nil
+	return connectiontype, nil
 }
 
 func (g *geoip) IsEmpty() bool {

@@ -141,7 +141,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	city, _ := s.gr.City(ip)
 	asn, _ := s.gr.ASN(ip)
 	isp, _ := s.gr.ISP(ip)
-	conn, _ := s.gr.ConnectionType(ip)
+	connectiontype, _ := s.gr.ConnectionType(ip)
 	var hostname string
 	if s.LookupAddr != nil {
 		hostname, _ = s.LookupAddr(ip)
@@ -168,7 +168,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		ASNOrg:     asn.AutonomousSystemOrganization,
 		ISP:        isp.ISP,
 		ISPOrg:        isp.Organization,
-		ConnectionType:   conn.ConnectionType,
+		ConnectionType:   connectiontype.ConnectionType,
 		Hostname:   hostname,
 	}
 	s.cache.Set(ip, response)
