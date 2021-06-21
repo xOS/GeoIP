@@ -4,8 +4,7 @@ import (
 	"math"
 	"net"
 
-	geoip2 "github.com/xOS/geoip2-golang"
-	
+	geoip2 "github.com/xos/geoip2-golang"
 )
 
 type Reader interface {
