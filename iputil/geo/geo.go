@@ -4,7 +4,8 @@ import (
 	"math"
 	"net"
 
-	geoip2 "github.com/oschwald/geoip2-golang"
+	geoip2 "github.com/xOS/geoip2-golang"
+	
 )
 
 type Reader interface {
@@ -43,7 +44,11 @@ type ISP struct {
 	AutonomousSystemOrganization string
 	ISP                          string
 	Organization                 string
-	Network                 string `maxminddb:"network"`
+	Network                 string
+}
+
+type ISPWithNetwork struct {
+	ISPWithNetwork string
 }
 
 type ConnectionType struct {
@@ -197,8 +202,8 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 	if record.Organization != "" {
 		isp.Organization = record.Organization
 	}
-	if isp.Network != "" {
-		isp.Network = isp.Network
+	if Network != "" {
+		isp.Network = Network
 	}
 	return isp, nil
 }
