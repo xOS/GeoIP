@@ -47,10 +47,6 @@ type ISP struct {
 	Network                 string
 }
 
-type ISPWithNetwork struct {
-	ISPWithNetwork string
-}
-
 type ConnectionType struct {
 	ConnectionType string
 }
