@@ -12,6 +12,7 @@ type Reader interface {
 	City(net.IP) (City, error)
 	ASN(net.IP) (ASN, error)
 	ISP(net.IP) (ISP, error)
+	ConnectionType(net.IP) (ConnectionType, error)
 	IsEmpty() bool
 }
 
@@ -42,6 +43,11 @@ type ISP struct {
 	AutonomousSystemOrganization string
 	ISP                          string
 	Organization                 string
+	Network                 string `maxminddb:"Network"`
+}
+
+type ConnectionType struct {
+	ConnectionType string
 }
 
 type geoip struct {
@@ -49,10 +55,11 @@ type geoip struct {
 	city    *geoip2.Reader
 	asn     *geoip2.Reader
 	isp     *geoip2.Reader
+	conn     *geoip2.Reader
 }
 
-func Open(countryDB, cityDB string, asnDB string, ispDB string) (Reader, error) {
-	var country, city, asn, isp *geoip2.Reader
+func Open(countryDB, cityDB string, asnDB string, ispDB string, connDB string) (Reader, error) {
+	var country, city, asn, isp, conn *geoip2.Reader
 	if countryDB != "" {
 		r, err := geoip2.Open(countryDB)
 		if err != nil {
@@ -81,7 +88,14 @@ func Open(countryDB, cityDB string, asnDB string, ispDB string) (Reader, error) 
 		}
 		isp = r
 	}
-	return &geoip{country: country, city: city, asn: asn, isp: isp}, nil
+	if connDB != "" {
+		r, err := geoip2.Open(connDB)
+		if err != nil {
+			return nil, err
+		}
+		conn = r
+	}
+	return &geoip{country: country, city: city, asn: asn, isp: isp, conn: conn}, nil
 }
 
 func (g *geoip) Country(ip net.IP) (Country, error) {
@@ -93,10 +107,10 @@ func (g *geoip) Country(ip net.IP) (Country, error) {
 	if err != nil {
 		return country, err
 	}
-	if c, exists := record.Country.Names["en"]; exists {
+	if c, exists := record.Country.Names["zh-CN"]; exists {
 		country.Name = c
 	}
-	if c, exists := record.RegisteredCountry.Names["en"]; exists && country.Name == "" {
+	if c, exists := record.RegisteredCountry.Names["zh-CN"]; exists && country.Name == "" {
 		country.Name = c
 	}
 	if record.Country.IsoCode != "" {
@@ -119,11 +133,11 @@ func (g *geoip) City(ip net.IP) (City, error) {
 	if err != nil {
 		return city, err
 	}
-	if c, exists := record.City.Names["en"]; exists {
+	if c, exists := record.City.Names["zh-CN"]; exists {
 		city.Name = c
 	}
 	if len(record.Subdivisions) > 0 {
-		if c, exists := record.Subdivisions[0].Names["en"]; exists {
+		if c, exists := record.Subdivisions[0].Names["zh-CN"]; exists {
 			city.RegionName = c
 		}
 		if record.Subdivisions[0].IsoCode != "" {
@@ -180,10 +194,28 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 	if record.AutonomousSystemOrganization != "" {
 		isp.ISP = record.ISP
 	}
-	if record.AutonomousSystemOrganization != "" {
+	if record.Organization != "" {
 		isp.Organization = record.Organization
 	}
+	if record.Network != "" {
+		isp.Network = record.Network
+	}
 	return isp, nil
+}
+
+func (g *geoip) ConnectionType(ip net.IP) (ConnectionType, error) {
+	conn := ConnectionType{}
+	if g.conn == nil {
+		return conn, nil
+	}
+	record, err := g.conn.ConnectionType(ip)
+	if err != nil {
+		return conn, err
+	}
+	if record.ConnectionType != "" {
+		conn.ConnectionType = record.ConnectionType
+	}
+	return conn, nil
 }
 
 func (g *geoip) IsEmpty() bool {

@@ -34,6 +34,10 @@ func (t *testDb) ISP(net.IP) (geo.ISP, error) {
 	return geo.ISP{AutonomousSystemNumber: 59795, AutonomousSystemOrganization: "Hosting4Real"}, nil
 }
 
+func (t *testDb) ConnectionType(net.IP) (geo.ConnectionType, error) {
+	return geo.ConnectionType{ConnectionType: "Corporate"}, nil
+}
+
 func (t *testDb) IsEmpty() bool { return false }
 
 func testServer() *Server {
@@ -119,7 +123,7 @@ func TestDisabledHandlers(t *testing.T) {
 	server := testServer()
 	server.LookupPort = nil
 	server.LookupAddr = nil
-	server.gr, _ = geo.Open("", "", "", "")
+	server.gr, _ = geo.Open("", "", "", "", "")
 	s := httptest.NewServer(server.Handler())
 
 	var tests = []struct {

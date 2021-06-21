@@ -86,10 +86,10 @@
                 <th scope="row">地区</th>
                 <td>{{ .Country }}</td>
               </tr>
-              {{ end }} {{ if .CountryISO }}
+              {{ end }} {{ if .CountryCode }}
               <tr>
                 <th scope="row">地区代码</th>
-                <td>{{ .CountryISO }}</td>
+                <td>{{ .CountryCode }}</td>
               </tr>
               {{ end }} {{ if .CountryEU }}
               <tr>
@@ -151,10 +151,20 @@
                 <th scope="row">所属组织</th>
                 <td>{{ .ASNOrg }}</td>
               </tr>
-              {{ end }} {{ if .Org }}
+              {{ end }} {{ if .ISPOrg }}
               <tr>
                 <th scope="row">原始组织</th>
-                <td>{{ .Org }}</td>
+                <td>{{ .ISPOrg }}</td>
+              </tr>
+              {{ end }}{{ if .Network }}
+              <tr>
+                <th scope="row">IP 范围</th>
+                <td>{{ .Network }}</td>
+              </tr>
+              {{ end }} {{ if .ConnectionType }}
+              <tr>
+                <th scope="row">连接类型</th>
+                <td>{{ .ConnectionType }}</td>
               </tr>
               {{ end }} {{ if .Hostname }}
               <tr>
