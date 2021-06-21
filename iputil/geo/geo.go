@@ -198,8 +198,8 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 	if record.Organization != "" {
 		isp.Organization = record.Organization
 	}
-	if Network != "" {
-		isp.Network = Network
+	if isp.Network != "" {
+		isp.Network = isp.Network
 	}
 	return isp, nil
 }
