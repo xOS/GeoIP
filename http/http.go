@@ -38,25 +38,25 @@ type Server struct {
 }
 
 type Response struct {
-	IP         net.IP               `json:"ip"`
-	IPDecimal  *big.Int             `json:"ip_decimal"`
-	Country    string               `json:"country,omitempty"`
-	CountryCode string              `json:"country_code,omitempty"`
-	CountryEU  *bool                `json:"country_eu,omitempty"`
-	RegionName string               `json:"region,omitempty"`
-	RegionCode string               `json:"region_code,omitempty"`
-	MetroCode  uint                 `json:"metro_code,omitempty"`
-	PostalCode string               `json:"zip_code,omitempty"`
-	City       string               `json:"city,omitempty"`
-	Latitude   float64              `json:"latitude,omitempty"`
-	Longitude  float64              `json:"longitude,omitempty"`
-	Timezone   string               `json:"time_zone,omitempty"`
-	ASN        string               `json:"asn,omitempty"`
-	ISP        string               `json:"isp,omitempty"`
-	ASOrg      string               `json:"asn_org,omitempty"`
-	Org        string               `json:"isp_org,omitempty"`
-	Hostname   string               `json:"hostname,omitempty"`
-	UserAgent  *useragent.UserAgent `json:"user_agent,omitempty"`
+	IP          net.IP               `json:"ip"`
+	IPDecimal   *big.Int             `json:"ip_decimal"`
+	Country     string               `json:"country,omitempty"`
+	CountryCode string               `json:"country_code,omitempty"`
+	CountryEU   *bool                `json:"country_eu,omitempty"`
+	RegionName  string               `json:"region,omitempty"`
+	RegionCode  string               `json:"region_code,omitempty"`
+	MetroCode   uint                 `json:"metro_code,omitempty"`
+	PostalCode  string               `json:"zip_code,omitempty"`
+	City        string               `json:"city,omitempty"`
+	Latitude    float64              `json:"latitude,omitempty"`
+	Longitude   float64              `json:"longitude,omitempty"`
+	Timezone    string               `json:"time_zone,omitempty"`
+	ASN         string               `json:"asn,omitempty"`
+	ISP         string               `json:"isp,omitempty"`
+	ASOrg       string               `json:"asn_org,omitempty"`
+	Org         string               `json:"isp_org,omitempty"`
+	Hostname    string               `json:"hostname,omitempty"`
+	UserAgent   *useragent.UserAgent `json:"user_agent,omitempty"`
 }
 
 type PortResponse struct {
@@ -149,24 +149,24 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		autonomousSystemNumber = fmt.Sprintf("AS%d", asn.AutonomousSystemNumber)
 	}
 	response = Response{
-		IP:         ip,
-		IPDecimal:  ipDecimal,
-		Country:    country.Name,
-		CountryCode:country.ISO,
-		CountryEU:  country.IsEU,
-		RegionName: city.RegionName,
-		RegionCode: city.RegionCode,
-		MetroCode:  city.MetroCode,
-		PostalCode: city.PostalCode,
-		City:       city.Name,
-		Latitude:   city.Latitude,
-		Longitude:  city.Longitude,
-		Timezone:   city.Timezone,
-		ASN:        autonomousSystemNumber,
-		ISP:        isp.ISP,
-		ASOrg:      isp.AutonomousSystemOrganization,
-		Org:        isp.Organization,
-		Hostname:   hostname,
+		IP:             ip,
+		IPDecimal:      ipDecimal,
+		Country:        country.Name,
+		CountryCode:    country.ISO,
+		CountryEU:      country.IsEU,
+		RegionName:     city.RegionName,
+		RegionCode:     city.RegionCode,
+		MetroCode:      city.MetroCode,
+		PostalCode:     city.PostalCode,
+		City:           city.Name,
+		Latitude:       city.Latitude,
+		Longitude:      city.Longitude,
+		Timezone:       city.Timezone,
+		ASN:            autonomousSystemNumber,
+		ISP:            isp.ISP,
+		ASOrg:          isp.AutonomousSystemOrganization,
+		Org:            isp.Organization,
+		Hostname:       hostname,
 	}
 	s.cache.Set(ip, response)
 	response.UserAgent = userAgentFromRequest(r)
