@@ -51,7 +51,7 @@ type geoip struct {
 	isp     *geoip2.Reader
 }
 
-func Open(countryDB, cityDB string, asnDB string, ispDB string) (Reader, error) {
+func Open(countryDB string, cityDB string, asnDB string, ispDB string) (Reader, error) {
 	var country, city, asn, isp *geoip2.Reader
 	if countryDB != "" {
 		r, err := geoip2.Open(countryDB)
@@ -177,10 +177,10 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 	if err != nil {
 		return isp, err
 	}
-	if record.AutonomousSystemOrganization != "" {
+	if record.ISP != "" {
 		isp.ISP = record.ISP
 	}
-	if record.AutonomousSystemOrganization != "" {
+	if record.Organization != "" {
 		isp.Organization = record.Organization
 	}
 	return isp, nil

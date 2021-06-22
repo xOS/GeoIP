@@ -41,7 +41,7 @@ type Response struct {
 	IP         net.IP               `json:"ip"`
 	IPDecimal  *big.Int             `json:"ip_decimal"`
 	Country    string               `json:"country,omitempty"`
-	CountryISO string               `json:"country_iso,omitempty"`
+	CountryCode string               `json:"country_code,omitempty"`
 	CountryEU  *bool                `json:"country_eu,omitempty"`
 	RegionName string               `json:"region_name,omitempty"`
 	RegionCode string               `json:"region_code,omitempty"`
@@ -54,7 +54,7 @@ type Response struct {
 	ISP        string               `json:"isp,omitempty"`
 	ASN        string               `json:"asn,omitempty"`
 	ASNOrg     string               `json:"asn_org,omitempty"`
-	Org        string               `json:"org,omitempty"`
+	ISPOrg        string               `json:"org,omitempty"`
 	Hostname   string               `json:"hostname,omitempty"`
 	UserAgent  *useragent.UserAgent `json:"user_agent,omitempty"`
 }
@@ -152,7 +152,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		IP:         ip,
 		IPDecimal:  ipDecimal,
 		Country:    country.Name,
-		CountryISO: country.ISO,
+		CountryCode: country.ISO,
 		CountryEU:  country.IsEU,
 		RegionName: city.RegionName,
 		RegionCode: city.RegionCode,
@@ -165,7 +165,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		ASN:        autonomousSystemNumber,
 		ISP:        isp.ISP,
 		ASNOrg:     asn.AutonomousSystemOrganization,
-		Org:        isp.Organization,
+		ISPOrg:        isp.Organization,
 		Hostname:   hostname,
 	}
 	s.cache.Set(ip, response)
@@ -209,12 +209,12 @@ func (s *Server) CLICountryHandler(w http.ResponseWriter, r *http.Request) *appE
 	return nil
 }
 
-func (s *Server) CLICountryISOHandler(w http.ResponseWriter, r *http.Request) *appError {
+func (s *Server) CLICountryCodeHandler(w http.ResponseWriter, r *http.Request) *appError {
 	response, err := s.newResponse(r)
 	if err != nil {
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
-	fmt.Fprintln(w, response.CountryISO)
+	fmt.Fprintln(w, response.CountryCode)
 	return nil
 }
 
@@ -259,7 +259,7 @@ func (s *Server) CLIORGHandler(w http.ResponseWriter, r *http.Request) *appError
 	if err != nil {
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
-	fmt.Fprintf(w, "%s\n", response.Org)
+	fmt.Fprintf(w, "%s\n", response.ISPOrg)
 	return nil
 }
 
@@ -450,7 +450,7 @@ func (s *Server) Handler() http.Handler {
 	r.Route("GET", "/ip", s.CLIHandler)
 	if !s.gr.IsEmpty() {
 		r.Route("GET", "/country", s.CLICountryHandler)
-		r.Route("GET", "/country-iso", s.CLICountryISOHandler)
+		r.Route("GET", "/country-iso", s.CLICountryCodeHandler)
 		r.Route("GET", "/city", s.CLICityHandler)
 		r.Route("GET", "/coordinates", s.CLICoordinatesHandler)
 		r.Route("GET", "/asn", s.CLIASNHandler)
