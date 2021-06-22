@@ -41,7 +41,7 @@ type Response struct {
 	IP         net.IP               `json:"ip"`
 	IPDecimal  *big.Int             `json:"ip_decimal"`
 	Country    string               `json:"country,omitempty"`
-	CountryISO string               `json:"country_code,omitempty"`
+	CountryCode string              `json:"country_code,omitempty"`
 	CountryEU  *bool                `json:"country_eu,omitempty"`
 	RegionName string               `json:"region,omitempty"`
 	RegionCode string               `json:"region_code,omitempty"`
@@ -51,9 +51,9 @@ type Response struct {
 	Latitude   float64              `json:"latitude,omitempty"`
 	Longitude  float64              `json:"longitude,omitempty"`
 	Timezone   string               `json:"time_zone,omitempty"`
-	ISP        string               `json:"isp,omitempty"`
 	ASN        string               `json:"asn,omitempty"`
-	ASOrg     string               `json:"asn_org,omitempty"`
+	ISP        string               `json:"isp,omitempty"`
+	ASOrg      string               `json:"asn_org,omitempty"`
 	Org        string               `json:"isp_org,omitempty"`
 	Hostname   string               `json:"hostname,omitempty"`
 	UserAgent  *useragent.UserAgent `json:"user_agent,omitempty"`
@@ -152,7 +152,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		IP:         ip,
 		IPDecimal:  ipDecimal,
 		Country:    country.Name,
-		CountryISO: country.ISO,
+		CountryCode:country.ISO,
 		CountryEU:  country.IsEU,
 		RegionName: city.RegionName,
 		RegionCode: city.RegionCode,
@@ -164,7 +164,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Timezone:   city.Timezone,
 		ASN:        autonomousSystemNumber,
 		ISP:        isp.ISP,
-		ASOrg:     asn.AutonomousSystemOrganization,
+		ASOrg:      isp.AutonomousSystemOrganization,
 		Org:        isp.Organization,
 		Hostname:   hostname,
 	}
@@ -209,12 +209,12 @@ func (s *Server) CLICountryHandler(w http.ResponseWriter, r *http.Request) *appE
 	return nil
 }
 
-func (s *Server) CLICountryISOHandler(w http.ResponseWriter, r *http.Request) *appError {
+func (s *Server) CLICountryCodeHandler(w http.ResponseWriter, r *http.Request) *appError {
 	response, err := s.newResponse(r)
 	if err != nil {
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
-	fmt.Fprintln(w, response.CountryISO)
+	fmt.Fprintln(w, response.CountryCode)
 	return nil
 }
 
