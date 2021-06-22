@@ -51,7 +51,7 @@ type geoip struct {
 	isp     *geoip2.Reader
 }
 
-func Open(countryDB string, cityDB string, asnDB string, ispDB string) (Reader, error) {
+func Open(countryDB, cityDB string, asnDB string, ispDB string) (Reader, error) {
 	var country, city, asn, isp *geoip2.Reader
 	if countryDB != "" {
 		r, err := geoip2.Open(countryDB)
