@@ -53,8 +53,8 @@ type Response struct {
 	Timezone   string               `json:"time_zone,omitempty"`
 	ISP        string               `json:"isp,omitempty"`
 	ASN        string               `json:"asn,omitempty"`
-	ASO     string               `json:"asn_org,omitempty"`
-	ORG        string               `json:"isp_org,omitempty"`
+	ASOrg     string               `json:"asn_org,omitempty"`
+	Org        string               `json:"isp_org,omitempty"`
 	Hostname   string               `json:"hostname,omitempty"`
 	UserAgent  *useragent.UserAgent `json:"user_agent,omitempty"`
 }
@@ -164,8 +164,8 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Timezone:   city.Timezone,
 		ASN:        autonomousSystemNumber,
 		ISP:        isp.ISP,
-		ASO:     asn.AutonomousSystemOrganization,
-		ORG:        isp.Organization,
+		ASOrg:     asn.AutonomousSystemOrganization,
+		Org:        isp.Organization,
 		Hostname:   hostname,
 	}
 	s.cache.Set(ip, response)
@@ -259,7 +259,7 @@ func (s *Server) CLIORGHandler(w http.ResponseWriter, r *http.Request) *appError
 	if err != nil {
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
-	fmt.Fprintf(w, "%s\n", response.ORG)
+	fmt.Fprintf(w, "%s\n", response.Org)
 	return nil
 }
 
@@ -450,7 +450,7 @@ func (s *Server) Handler() http.Handler {
 	r.Route("GET", "/ip", s.CLIHandler)
 	if !s.gr.IsEmpty() {
 		r.Route("GET", "/country", s.CLICountryHandler)
-		r.Route("GET", "/country-iso", s.CLICountryCodeHandler)
+		r.Route("GET", "/country-code", s.CLICountryCodeHandler)
 		r.Route("GET", "/city", s.CLICityHandler)
 		r.Route("GET", "/coordinates", s.CLICoordinatesHandler)
 		r.Route("GET", "/asn", s.CLIASNHandler)
