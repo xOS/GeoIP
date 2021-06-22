@@ -164,7 +164,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Timezone:       city.Timezone,
 		ASN:            autonomousSystemNumber,
 		ISP:            isp.ISP,
-		ASO:            isp.AutonomousSystemOrganization,
+		ASO:            asn.AutonomousSystemOrganization,
 		Org:            isp.Organization,
 		Hostname:       hostname,
 	}
