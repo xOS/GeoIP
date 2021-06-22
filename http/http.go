@@ -41,9 +41,9 @@ type Response struct {
 	IP         net.IP               `json:"ip"`
 	IPDecimal  *big.Int             `json:"ip_decimal"`
 	Country    string               `json:"country,omitempty"`
-	CountryCode string               `json:"country_code,omitempty"`
+	CountryISO string               `json:"country_code,omitempty"`
 	CountryEU  *bool                `json:"country_eu,omitempty"`
-	RegionName string               `json:"region_name,omitempty"`
+	RegionName string               `json:"region,omitempty"`
 	RegionCode string               `json:"region_code,omitempty"`
 	MetroCode  uint                 `json:"metro_code,omitempty"`
 	PostalCode string               `json:"zip_code,omitempty"`
@@ -54,7 +54,7 @@ type Response struct {
 	ISP        string               `json:"isp,omitempty"`
 	ASN        string               `json:"asn,omitempty"`
 	ASOrg     string               `json:"asn_org,omitempty"`
-	Org        string               `json:"org,omitempty"`
+	Org        string               `json:"isp_org,omitempty"`
 	Hostname   string               `json:"hostname,omitempty"`
 	UserAgent  *useragent.UserAgent `json:"user_agent,omitempty"`
 }
@@ -152,7 +152,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		IP:         ip,
 		IPDecimal:  ipDecimal,
 		Country:    country.Name,
-		CountryCode: country.ISO,
+		CountryISO: country.ISO,
 		CountryEU:  country.IsEU,
 		RegionName: city.RegionName,
 		RegionCode: city.RegionCode,
@@ -209,12 +209,12 @@ func (s *Server) CLICountryHandler(w http.ResponseWriter, r *http.Request) *appE
 	return nil
 }
 
-func (s *Server) CLICountryCodeHandler(w http.ResponseWriter, r *http.Request) *appError {
+func (s *Server) CLICountryISOHandler(w http.ResponseWriter, r *http.Request) *appError {
 	response, err := s.newResponse(r)
 	if err != nil {
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
-	fmt.Fprintln(w, response.CountryCode)
+	fmt.Fprintln(w, response.CountryISO)
 	return nil
 }
 
