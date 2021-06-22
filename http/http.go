@@ -53,7 +53,7 @@ type Response struct {
 	Timezone   string               `json:"time_zone,omitempty"`
 	ISP        string               `json:"isp,omitempty"`
 	ASN        string               `json:"asn,omitempty"`
-	ASOrg     string               `json:"asn_org,omitempty"`
+	ASNOrg     string               `json:"asn_org,omitempty"`
 	Org        string               `json:"isp_org,omitempty"`
 	Hostname   string               `json:"hostname,omitempty"`
 	UserAgent  *useragent.UserAgent `json:"user_agent,omitempty"`
@@ -164,7 +164,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Timezone:   city.Timezone,
 		ASN:        autonomousSystemNumber,
 		ISP:        isp.ISP,
-		ASOrg:     asn.AutonomousSystemOrganization,
+		ASNOrg:     asn.AutonomousSystemOrganization,
 		Org:        isp.Organization,
 		Hostname:   hostname,
 	}
