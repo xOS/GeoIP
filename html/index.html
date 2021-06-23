@@ -151,7 +151,7 @@
                 <th scope="row">所属组织</th>
                 <td>{{ .ORG }}</td>
               </tr>
-              {{ end }} {{ if .Hostname }}
+              {{ end }}{{ if .Hostname }}
               <tr>
                 <th scope="row">主机名</th>
                 <td>{{ .Hostname }}</td>
@@ -200,11 +200,18 @@
                   country
                 </button>
                 <button
-                  name="country-iso"
+                  name="country-code"
                   class="pure-button widget-select"
                   onclick="changeInput(this.name, this)"
                 >
-                  country-iso
+                  country-code
+                </button>
+                <button
+                  name="region"
+                  class="pure-button widget-select"
+                  onclick="changeInput(this.name, this)"
+                >
+                  region
                 </button>
                 <button
                   name="city"
@@ -226,6 +233,13 @@
                   onclick="changeInput(this.name, this)"
                 >
                   isp
+                </button>
+                <button
+                  name="org"
+                  class="pure-button widget-select"
+                  onclick="changeInput(this.name, this)"
+                >
+                  org
                 </button>
                 <button
                   name="json"
