@@ -53,8 +53,7 @@ type Response struct {
 	Timezone    string               `json:"time_zone,omitempty"`
 	ASN         string               `json:"asn,omitempty"`
 	ISP         string               `json:"isp,omitempty"`
-	ASO         string               `json:"asn_org,omitempty"`
-	Org         string               `json:"isp_org,omitempty"`
+	ORG         string               `json:"org,omitempty"`
 	Hostname    string               `json:"hostname,omitempty"`
 	UserAgent   *useragent.UserAgent `json:"user_agent,omitempty"`
 }
@@ -164,8 +163,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Timezone:       city.Timezone,
 		ASN:            autonomousSystemNumber,
 		ISP:            isp.ISP,
-		ASO:            asn.AutonomousSystemOrganization,
-		Org:            isp.Organization,
+		ORG:            asn.AutonomousSystemOrganization,
 		Hostname:       hostname,
 	}
 	s.cache.Set(ip, response)
@@ -259,7 +257,7 @@ func (s *Server) CLIORGHandler(w http.ResponseWriter, r *http.Request) *appError
 	if err != nil {
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
-	fmt.Fprintf(w, "%s\n", response.Org)
+	fmt.Fprintf(w, "%s\n", response.ORG)
 	return nil
 }
 

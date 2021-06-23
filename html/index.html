@@ -146,15 +146,10 @@
                 <th scope="row">运营商</th>
                 <td>{{ .ISP }}</td>
               </tr>
-              {{ end }} {{ if .ASO }}
+              {{ end }} {{ if .ORG }}
               <tr>
                 <th scope="row">所属组织</th>
-                <td>{{ .ASO }}</td>
-              </tr>
-              {{ end }} {{ if .Org }}
-              <tr>
-                <th scope="row">原始组织</th>
-                <td>{{ .Org }}</td>
+                <td>{{ .ORG }}</td>
               </tr>
               {{ end }} {{ if .Hostname }}
               <tr>
