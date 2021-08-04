@@ -163,7 +163,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Timezone:       city.Timezone,
 		ASN:            autonomousSystemNumber,
 		ISP:            isp.ISP,
-		ORG:             asn.AutonomousSystemOrganization,
+		ORG:            asn.AutonomousSystemOrganization,
 		Hostname:       hostname,
 	}
 	s.cache.Set(ip, response)
