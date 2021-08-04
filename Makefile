@@ -8,13 +8,13 @@ XGOARCH := amd64
 XGOOS := linux
 XBIN := $(XGOOS)_$(XGOARCH)/geoip
 
-all: lint test install
+#all: lint test install
 
-test:
-	go test ./...
+#test:
+#	go test ./...
 
-vet:
-	go vet ./...
+#vet:
+#	go vet ./...
 
 #check-fmt:
 #	bash -c "diff --line-format='%L' <(echo -n) <(gofmt -d -s .)"
