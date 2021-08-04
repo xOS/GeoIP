@@ -31,7 +31,7 @@ func (t *testDb) ASN(net.IP) (geo.ASN, error) {
 }
 
 func (t *testDb) ISP(net.IP) (geo.ISP, error) {
-	return geo.ISP{AutonomousSystemNumber: 59795, AutonomousSystemOrganization: "Hosting4Real"}, nil
+	return geo.ISP{AutonomousSystemOrganization: "Hosting4Real"}, nil
 }
 
 func (t *testDb) IsEmpty() bool { return false }
@@ -93,7 +93,7 @@ func TestCLIHandlers(t *testing.T) {
 		{s.URL, "127.0.0.1\n", 200, "foo/bar", textMediaType},
 		{s.URL + "/ip", "127.0.0.1\n", 200, "", ""},
 		{s.URL + "/country", "Elbonia\n", 200, "", ""},
-		{s.URL + "/country-iso", "EB\n", 200, "", ""},
+		{s.URL + "/country-code", "EB\n", 200, "", ""},
 		{s.URL + "/coordinates", "63.416667,10.416667\n", 200, "", ""},
 		{s.URL + "/city", "Bornyasherk\n", 200, "", ""},
 		{s.URL + "/foo", "404 page not found", 404, "", ""},
@@ -129,7 +129,7 @@ func TestDisabledHandlers(t *testing.T) {
 	}{
 		{s.URL + "/port/1337", "404 page not found", 404},
 		{s.URL + "/country", "404 page not found", 404},
-		{s.URL + "/country-iso", "404 page not found", 404},
+		{s.URL + "/country-code", "404 page not found", 404},
 		{s.URL + "/city", "404 page not found", 404},
 		{s.URL + "/json", "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433\n}", 200},
 	}
@@ -157,7 +157,7 @@ func TestJSONHandlers(t *testing.T) {
 		out    string
 		status int
 	}{
-		{s.URL, "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"country\": \"Elbonia\",\n  \"country_iso\": \"EB\",\n  \"country_eu\": false,\n  \"region_name\": \"North Elbonia\",\n  \"region_code\": \"1234\",\n  \"metro_code\": 1234,\n  \"zip_code\": \"1234\",\n  \"city\": \"Bornyasherk\",\n  \"latitude\": 63.416667,\n  \"longitude\": 10.416667,\n  \"time_zone\": \"Europe/Bornyasherk\",\n  \"asn\": \"AS59795\",\n  \"asn_org\": \"Hosting4Real\",\n  \"hostname\": \"localhost\",\n  \"user_agent\": {\n    \"product\": \"curl\",\n    \"version\": \"7.2.6.0\",\n    \"raw_value\": \"curl/7.2.6.0\"\n  }\n}", 200},
+		{s.URL, "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"country\": \"Elbonia\",\n  \"country_code\": \"EB\",\n  \"country_eu\": false,\n  \"region\": \"North Elbonia\",\n  \"region_code\": \"1234\",\n  \"metro_code\": 1234,\n  \"zip_code\": \"1234\",\n  \"city\": \"Bornyasherk\",\n  \"latitude\": 63.416667,\n  \"longitude\": 10.416667,\n  \"time_zone\": \"Europe/Bornyasherk\",\n  \"asn\": \"AS59795\",\n  \"asn_org\": \"Hosting4Real\",\n  \"hostname\": \"localhost\",\n  \"user_agent\": {\n    \"product\": \"curl\",\n    \"version\": \"7.2.6.0\",\n    \"raw_value\": \"curl/7.2.6.0\"\n  }\n}", 200},
 		{s.URL + "/port/foo", "{\n  \"status\": 400,\n  \"error\": \"invalid port: foo\"\n}", 400},
 		{s.URL + "/port/0", "{\n  \"status\": 400,\n  \"error\": \"invalid port: 0\"\n}", 400},
 		{s.URL + "/port/65537", "{\n  \"status\": 400,\n  \"error\": \"invalid port: 65537\"\n}", 400},
