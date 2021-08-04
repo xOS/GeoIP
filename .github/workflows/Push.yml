@@ -17,9 +17,17 @@ jobs:
     - name: install go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.15
+        go-version: 1.16
     - name: build and test
       run: make
+    - name: enable experimental docker features
+      if: ${{ github.ref == 'refs/heads/master' }}
+      run: |
+        echo '{"experimental":true}' | sudo tee /etc/docker/daemon.json
+        sudo service docker restart
+    - name: publish multi-arch docker image
+      if: ${{ github.ref == 'refs/heads/master' }}
+      run: make docker-pushx  
     - name: Log into registry
       run: |
         echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
@@ -35,10 +43,3 @@ jobs:
         docker push $GHRC_IMAGE_NAME
         docker tag geoip nangle/geoip
         docker push nangle/geoip
-    - name: enable experimental docker features
-      run: |
-        go env
-        echo '{"experimental":true}' | sudo tee /etc/docker/daemon.json
-        sudo service docker restart
-    - name: publish multi-arch docker image
-      run: make docker-pushx
