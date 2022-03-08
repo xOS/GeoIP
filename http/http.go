@@ -54,6 +54,9 @@ type Response struct {
 	ASN         string               `json:"asn,omitempty"`
 	ISP         string               `json:"isp,omitempty"`
 	ORG         string               `json:"org,omitempty"`
+	IO         string               `json:"isp_org,omitempty"`
+	ISPO         string               `json:"isp_asn_org,omitempty"`
+	IN         string               `json:"isp_asn,omitempty"`
 	Hostname    string               `json:"hostname,omitempty"`
 	UserAgent   *useragent.UserAgent `json:"user_agent,omitempty"`
 }
@@ -147,6 +150,9 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	if asn.AutonomousSystemNumber > 0 {
 		autonomousSystemNumber = fmt.Sprintf("AS%d", asn.AutonomousSystemNumber)
 	}
+	if isp.AutonomousSystemNumber > 0 {
+		autonomousSystemNumber = fmt.Sprintf("AS%d", isp.AutonomousSystemNumber)
+	}
 	response = Response{
 		IP:             ip,
 		IPDecimal:      ipDecimal,
@@ -162,6 +168,9 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Longitude:      city.Longitude,
 		Timezone:       city.Timezone,
 		ASN:            autonomousSystemNumber,
+		IN:            isp.AutonomousSystemNumber,
+		ISPO:            isp.AutonomousSystemOrganization,
+		IO:            isp.Organization,
 		ISP:            isp.ISP,
 		ORG:            asn.AutonomousSystemOrganization,
 		Hostname:       hostname,
