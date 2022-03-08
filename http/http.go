@@ -57,6 +57,7 @@ type Response struct {
 	IO         string               `json:"isp_org,omitempty"`
 	ISPO         string               `json:"isp_asn_org,omitempty"`
 	IN         string               `json:"isp_asn,omitempty"`
+	ConnectionType   string               `json:"connection_type,omitempty"`
 	Hostname    string               `json:"hostname,omitempty"`
 	UserAgent   *useragent.UserAgent `json:"user_agent,omitempty"`
 }
@@ -142,6 +143,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	city, _ := s.gr.City(ip)
 	asn, _ := s.gr.ASN(ip)
 	isp, _ := s.gr.ISP(ip)
+	connectiontype, _ := s.gr.ConnectionType(ip)
 	var hostname string
 	if s.LookupAddr != nil {
 		hostname, _ = s.LookupAddr(ip)
@@ -174,6 +176,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		IO:            isp.Organization,
 		ISP:            isp.ISP,
 		ORG:            asn.AutonomousSystemOrganization,
+		ConnectionType:   connectiontype.ConnectionType,
 		Hostname:       hostname,
 	}
 	s.cache.Set(ip, response)
@@ -268,6 +271,15 @@ func (s *Server) CLIORGHandler(w http.ResponseWriter, r *http.Request) *appError
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
 	fmt.Fprintf(w, "%s\n", response.ORG)
+	return nil
+}
+
+func (s *Server) CLIConnHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.ConnectionType)
 	return nil
 }
 
@@ -464,6 +476,7 @@ func (s *Server) Handler() http.Handler {
 		r.Route("GET", "/asn", s.CLIASNHandler)
 		r.Route("GET", "/isp", s.CLIISPHandler)
 		r.Route("GET", "/org", s.CLIORGHandler)
+		r.Route("GET", "/connectiontype", s.CLIConnHandler)
 	}
 
 	// Browser

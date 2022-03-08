@@ -12,6 +12,7 @@ type Reader interface {
 	City(net.IP) (City, error)
 	ASN(net.IP) (ASN, error)
 	ISP(net.IP) (ISP, error)
+	ConnectionType(net.IP) (ConnectionType, error)
 	IsEmpty() bool
 }
 
@@ -44,15 +45,20 @@ type ISP struct {
 	Organization                 string
 }
 
+type ConnectionType struct {
+	ConnectionType string
+}
+
 type geoip struct {
 	country *geoip2.Reader
 	city    *geoip2.Reader
 	asn     *geoip2.Reader
 	isp     *geoip2.Reader
+	connectiontype     *geoip2.Reader
 }
 
-func Open(countryDB string, cityDB string, asnDB string, ispDB string) (Reader, error) {
-	var country, city, asn, isp *geoip2.Reader
+func Open(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB string) (Reader, error) {
+	var country, city, asn, isp, connectiontype *geoip2.Reader
 	if countryDB != "" {
 		r, err := geoip2.Open(countryDB)
 		if err != nil {
@@ -81,7 +87,14 @@ func Open(countryDB string, cityDB string, asnDB string, ispDB string) (Reader, 
 		}
 		isp = r
 	}
-	return &geoip{country: country, city: city, asn: asn, isp: isp}, nil
+	if connectiontypeDB != "" {
+		r, err := geoip2.Open(connectiontypeDB)
+		if err != nil {
+			return nil, err
+		}
+		connectiontype = r
+	}
+	return &geoip{country: country, city: city, asn: asn, isp: isp, connectiontype: connectiontype}, nil
 }
 
 func (g *geoip) Country(ip net.IP) (Country, error) {
@@ -185,11 +198,19 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 	}
 	if record.AutonomousSystemNumber > 0 {
 		isp.ASN = record.AutonomousSystemNumber
+func (g *geoip) ConnectionType(ip net.IP) (ConnectionType, error) {
+	connectiontype := ConnectionType{}
+	if g.connectiontype == nil {
+		return connectiontype, nil
 	}
-	if record.AutonomousSystemOrganization != "" {
-		isp.ORG = record.AutonomousSystemOrganization
+	record, err := g.connectiontype.ConnectionType(ip)
+	if err != nil {
+		return connectiontype, err
 	}
-	return isp, nil
+	if record.ConnectionType != "" {
+		connectiontype.ConnectionType = record.ConnectionType
+	}
+	return connectiontype, nil
 }
 
 func (g *geoip) IsEmpty() bool {

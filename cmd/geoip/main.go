@@ -32,6 +32,7 @@ func main() {
 	cityFile := flag.String("c", "", "Path to GeoIP city database")
 	asnFile := flag.String("a", "", "Path to GeoIP ASN database")
 	ispFile := flag.String("i", "", "Path to GeoIP ISP database")
+	connFile := flag.String("n", "", "Path to GeoIP2 Connection-Type database")
 	listen := flag.String("l", ":1212", "Listening address")
 	reverseLookup := flag.Bool("r", true, "Perform reverse hostname lookups")
 	portLookup := flag.Bool("p", true, "Enable port lookup")
@@ -47,7 +48,7 @@ func main() {
 		return
 	}
 
-	r, err := geo.Open(*countryFile, *cityFile, *asnFile, *ispFile)
+	r, err := geo.Open(*countryFile, *cityFile, *asnFile, *ispFile, *connFile)
 	if err != nil {
 		log.Fatal(err)
 	}
