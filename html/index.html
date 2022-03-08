@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="{{ .Host }} • IP 地址查询 &mdash; 查找自己的IP地址以及有关信息的最佳工具。"
+      content="{{ .Host }} • IP 地址查询 &mdash; 查询IP信息的最佳工具。"
     />
-    <link rel="icon" href="https://nan.ge/favicon.ico" type="image/x-icon" />
-    <link rel="canonical" href="https://ip.nan.ge/" />
+    <link rel="icon" href="https://s.cdn.ink/image/others/favicon.ico" type="image/x-icon" />
+    <link rel="canonical" href="https://s.cdn.ink/" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&display=swap"
@@ -17,15 +17,11 @@
     />
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/pure/1.0.0/pure-min.css"
-      integrity="sha384-nn4HPE8lTHyVtfCBi5yW9d20FjT8BJwUXyWZT9InLYax14RDjBj46LmSztkmNP9w"
-      crossorigin="anonymous"
+      href="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-d/pure/1.0.1/pure-min.css"
     />
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/pure/1.0.0/grids-responsive-min.css"
-      integrity="sha384-b92sF+wDNTHrfEtRaYo+EpcA8FUyHOSXrdxKc9XB9kaaX1rSQAgMevW6cYeE5Bdv"
-      crossorigin="anonymous"
+      href="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-d/pure/1.0.1/grids-responsive-min.css"
     />
 
     {{ template "script.html" . }} {{ template "styles.html" . }}
@@ -38,7 +34,7 @@
             <h1>你的 IP</h1>
             <p><code class="ip">{{ .IP }}</code></p>
             <p>
-              查找IP地址及其有关信息的首选。
+              查询 IP 信息的首选
             </p>
           </div>
         </div>
@@ -49,7 +45,7 @@
               <div class="pure-u pure-u-md-1">
                 <div class="leafcloud-logo">
                   <a href="https://www.nange.cn" target="_blank">
-                    <img src="https://get.nan.ge/image/logo.png" style="width: 80px;">
+                    <img src="https://s.cdn.ink/image/others/star.png" style="width: 80px;">
                   </a>
                 </div>
               </div>
@@ -151,6 +147,11 @@
                 <th scope="row">所属组织</th>
                 <td>{{ .ORG }}</td>
               </tr>
+              {{ end }}{{ if .ConnectionType }}
+              <tr>
+                <th scope="row">连接类型</th>
+                <td>{{ .ConnectionType }}</td>
+              </tr>
               {{ end }}{{ if .Hostname }}
               <tr>
                 <th scope="row">主机名</th>
@@ -198,13 +199,6 @@
                   onclick="changeInput(this.name, this)"
                 >
                   country
-                </button>
-                <button
-                  name="country-code"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  country-code
                 </button>
                 <button
                   name="region"

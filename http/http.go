@@ -470,13 +470,13 @@ func (s *Server) Handler() http.Handler {
 	r.Route("GET", "/ip", s.CLIHandler)
 	if !s.gr.IsEmpty() {
 		r.Route("GET", "/country", s.CLICountryHandler)
-		r.Route("GET", "/country-code", s.CLICountryCodeHandler)
+		r.Route("GET", "/country_code", s.CLICountryCodeHandler)
 		r.Route("GET", "/city", s.CLICityHandler)
 		r.Route("GET", "/coordinates", s.CLICoordinatesHandler)
 		r.Route("GET", "/asn", s.CLIASNHandler)
 		r.Route("GET", "/isp", s.CLIISPHandler)
 		r.Route("GET", "/org", s.CLIORGHandler)
-		r.Route("GET", "/connectiontype", s.CLIConnHandler)
+		r.Route("GET", "/connection_type", s.CLIConnHandler)
 	}
 
 	// Browser

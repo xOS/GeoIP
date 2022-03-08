@@ -40,8 +40,11 @@
       case "json":
         output.innerText = jsonObj
         break
-      case "country-code":
+      case "country_code":
         output.innerText = data["country_code"]
+        break
+      case "connection_type":
+        output.innerText = data["connection_type"]
         break
       case "port":
         portInput.classList.remove("hidden");
