@@ -183,7 +183,7 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 	if record.Organization != "" {
 		isp.Organization = record.Organization
 	}
-	if record.AutonomousSystemNumber != "" {
+	if record.AutonomousSystemNumber > 0 {
 		isp.AutonomousSystemNumber = record.AutonomousSystemNumber
 	}
 	if record.AutonomousSystemOrganization != "" {
