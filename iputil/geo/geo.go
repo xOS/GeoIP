@@ -198,6 +198,13 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 	}
 	if record.AutonomousSystemNumber > 0 {
 		isp.ASN = record.AutonomousSystemNumber
+	}
+	if record.AutonomousSystemOrganization != "" {
+		isp.ORG = record.AutonomousSystemOrganization
+	}
+	return isp, nil
+}
+
 func (g *geoip) ConnectionType(ip net.IP) (ConnectionType, error) {
 	connectiontype := ConnectionType{}
 	if g.connectiontype == nil {
