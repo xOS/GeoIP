@@ -150,8 +150,9 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	if asn.AutonomousSystemNumber > 0 {
 		autonomousSystemNumber = fmt.Sprintf("AS%d", asn.AutonomousSystemNumber)
 	}
-	if isp.AutonomousSystemNumber > 0 {
-		autonomousSystemNumber = fmt.Sprintf("AS%d", isp.AutonomousSystemNumber)
+	var ispASN string
+	if isp.ASN > 0 {
+		ispASN = fmt.Sprintf("AS%d", isp.ASN)
 	}
 	response = Response{
 		IP:             ip,
@@ -168,8 +169,8 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Longitude:      city.Longitude,
 		Timezone:       city.Timezone,
 		ASN:            autonomousSystemNumber,
-		IN:            isp.AutonomousSystemNumber,
-		ISPO:            isp.AutonomousSystemOrganization,
+		IN:            ispASN,
+		ISPO:            isp.ORG,
 		IO:            isp.Organization,
 		ISP:            isp.ISP,
 		ORG:            asn.AutonomousSystemOrganization,

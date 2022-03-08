@@ -38,8 +38,8 @@ type ASN struct {
 }
 
 type ISP struct {
-	AutonomousSystemNumber       uint
-	AutonomousSystemOrganization string
+	ASN       uint
+	ORG string
 	ISP                          string
 	Organization                 string
 }
@@ -184,10 +184,10 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 		isp.Organization = record.Organization
 	}
 	if record.AutonomousSystemNumber > 0 {
-		isp.AutonomousSystemNumber = record.AutonomousSystemNumber
+		isp.ASN = record.AutonomousSystemNumber
 	}
 	if record.AutonomousSystemOrganization != "" {
-		isp.AutonomousSystemOrganization = record.AutonomousSystemOrganization
+		isp.ORG = record.AutonomousSystemOrganization
 	}
 	return isp, nil
 }
