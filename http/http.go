@@ -14,8 +14,6 @@ import (
 	"github.com/xos/geoip/iputil"
 	"github.com/xos/geoip/iputil/geo"
 
-	// "github.com/xos/geoip/useragent"
-
 	"math/big"
 	"net"
 	"net/http"
@@ -26,10 +24,6 @@ const (
 	jsonMediaType = "application/json"
 	textMediaType = "text/plain"
 )
-
-// type UserAgents struct {
-// 	RawValue string `json:"raw_value,omitempty"`
-// }
 
 type Server struct {
 	Template   string
@@ -127,10 +121,6 @@ func userAgentFromRequest(r *http.Request) string {
 	return userAgentRaw
 }
 
-// func Parse(s string) string {
-// 	return s
-// }
-
 func (s *Server) newResponse(r *http.Request) (Response, error) {
 	ip, err := ipFromRequest(s.IPHeaders, r, true)
 	if err != nil {
@@ -155,6 +145,9 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	var autonomousSystemNumber string
 	if asn.AutonomousSystemNumber > 0 {
 		autonomousSystemNumber = fmt.Sprintf("AS%d", asn.AutonomousSystemNumber)
+	}
+	if isp.ISP == "" {
+		isp.ISP = asn.AutonomousSystemOrganization
 	}
 	var ispASN string
 	if isp.ASN > 0 {
@@ -424,15 +417,6 @@ func NotFoundHandler(w http.ResponseWriter, r *http.Request) *appError {
 	return err
 }
 
-// func cliMatcher(r *http.Request) bool {
-// 	ua := useragent.Parse(r.UserAgent())
-// 	switch ua.Product {
-// 	case "curl", "HTTPie", "httpie-go", "Wget", "fetch libfetch", "Go", "Go-http-client", "ddclient", "Mikrotik", "xh":
-// 		return true
-// 	}
-// 	return false
-// }
-
 type appHandler func(http.ResponseWriter, *http.Request) *appError
 
 func wrapHandlerFunc(f http.HandlerFunc) appHandler {
@@ -479,7 +463,6 @@ func (s *Server) Handler() http.Handler {
 	r.Route("GET", "/json", s.JSONHandler)
 
 	// CLI
-	// r.Route("GET", "/", s.CLIHandler).MatcherFunc(cliMatcher)
 	r.Route("GET", "/", s.CLIHandler).Header("Accept", textMediaType)
 	r.Route("GET", "/ip", s.CLIHandler)
 	if !s.gr.IsEmpty() {
