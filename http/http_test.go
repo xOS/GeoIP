@@ -31,7 +31,7 @@ func (t *testDb) ASN(net.IP) (geo.ASN, error) {
 }
 
 func (t *testDb) ISP(net.IP) (geo.ISP, error) {
-	return geo.ISP{AutonomousSystemOrganization: "Hosting4Real"}, nil
+	return geo.ISP{ISP: "Hosting4Real"}, nil
 }
 
 func (t *testDb) ConnectionType(net.IP) (geo.ConnectionType, error) {
@@ -253,35 +253,6 @@ func TestIPFromRequest(t *testing.T) {
 		out := net.ParseIP(tt.out)
 		if !ip.Equal(out) {
 			t.Errorf("Expected %s, got %s", out, ip)
-		}
-	}
-}
-
-func TestCLIMatcher(t *testing.T) {
-	browserUserAgent := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) " +
-		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.28 " +
-		"Safari/537.36"
-	var tests = []struct {
-		in  string
-		out bool
-	}{
-		{"curl/7.26.0", true},
-		{"Wget/1.13.4 (linux-gnu)", true},
-		{"Wget", true},
-		{"fetch libfetch/2.0", true},
-		{"HTTPie/0.9.3", true},
-		{"httpie-go/0.6.0", true},
-		{"Go 1.1 package http", true},
-		{"Go-http-client/1.1", true},
-		{"Go-http-client/2.0", true},
-		{"ddclient/3.8.3", true},
-		{"Mikrotik/6.x Fetch", true},
-		{browserUserAgent, false},
-	}
-	for _, tt := range tests {
-		r := &http.Request{Header: http.Header{"User-Agent": []string{tt.in}}}
-		if got := cliMatcher(r); got != tt.out {
-			t.Errorf("Expected %t, got %t for %q", tt.out, got, tt.in)
 		}
 	}
 }

@@ -13,7 +13,8 @@ import (
 
 	"github.com/xos/geoip/iputil"
 	"github.com/xos/geoip/iputil/geo"
-	"github.com/xos/geoip/useragent"
+
+	// "github.com/xos/geoip/useragent"
 
 	"math/big"
 	"net"
@@ -25,6 +26,10 @@ const (
 	jsonMediaType = "application/json"
 	textMediaType = "text/plain"
 )
+
+// type UserAgents struct {
+// 	RawValue string `json:"raw_value,omitempty"`
+// }
 
 type Server struct {
 	Template   string
@@ -38,28 +43,28 @@ type Server struct {
 }
 
 type Response struct {
-	IP          net.IP               `json:"ip"`
-	IPDecimal   *big.Int             `json:"ip_decimal"`
-	Country     string               `json:"country,omitempty"`
-	CountryCode string               `json:"country_code,omitempty"`
-	CountryEU   *bool                `json:"country_eu,omitempty"`
-	RegionName  string               `json:"region,omitempty"`
-	RegionCode  string               `json:"region_code,omitempty"`
-	MetroCode   uint                 `json:"metro_code,omitempty"`
-	PostalCode  string               `json:"zip_code,omitempty"`
-	City        string               `json:"city,omitempty"`
-	Latitude    float64              `json:"latitude,omitempty"`
-	Longitude   float64              `json:"longitude,omitempty"`
-	Timezone    string               `json:"time_zone,omitempty"`
-	ASN         string               `json:"asn,omitempty"`
-	ISP         string               `json:"isp,omitempty"`
-	ORG         string               `json:"org,omitempty"`
-	IO         string               `json:"isp_org,omitempty"`
-	ISPO         string               `json:"isp_asn_org,omitempty"`
-	IN         string               `json:"isp_asn,omitempty"`
-	ConnectionType   string               `json:"connection_type,omitempty"`
-	Hostname    string               `json:"hostname,omitempty"`
-	UserAgent   *useragent.UserAgent `json:"user_agent,omitempty"`
+	IP             net.IP   `json:"ip"`
+	IPDecimal      *big.Int `json:"ip_decimal"`
+	Country        string   `json:"country,omitempty"`
+	CountryCode    string   `json:"country_code,omitempty"`
+	CountryEU      *bool    `json:"country_eu,omitempty"`
+	RegionName     string   `json:"region,omitempty"`
+	RegionCode     string   `json:"region_code,omitempty"`
+	MetroCode      uint     `json:"metro_code,omitempty"`
+	PostalCode     string   `json:"zip_code,omitempty"`
+	City           string   `json:"city,omitempty"`
+	Latitude       float64  `json:"latitude,omitempty"`
+	Longitude      float64  `json:"longitude,omitempty"`
+	Timezone       string   `json:"time_zone,omitempty"`
+	ASN            string   `json:"asn,omitempty"`
+	ISP            string   `json:"isp,omitempty"`
+	ORG            string   `json:"org,omitempty"`
+	IO             string   `json:"isp_org,omitempty"`
+	ISPO           string   `json:"isp_asn_org,omitempty"`
+	IN             string   `json:"isp_asn,omitempty"`
+	ConnectionType string   `json:"connection_type,omitempty"`
+	Hostname       string   `json:"hostname,omitempty"`
+	UserAgent      string   `json:"user_agent,omitempty"`
 }
 
 type PortResponse struct {
@@ -117,15 +122,14 @@ func ipFromRequest(headers []string, r *http.Request, customIP bool) (net.IP, er
 	return ip, nil
 }
 
-func userAgentFromRequest(r *http.Request) *useragent.UserAgent {
-	var userAgent *useragent.UserAgent
+func userAgentFromRequest(r *http.Request) string {
 	userAgentRaw := r.UserAgent()
-	if userAgentRaw != "" {
-		parsed := useragent.Parse(userAgentRaw)
-		userAgent = &parsed
-	}
-	return userAgent
+	return userAgentRaw
 }
+
+// func Parse(s string) string {
+// 	return s
+// }
 
 func (s *Server) newResponse(r *http.Request) (Response, error) {
 	ip, err := ipFromRequest(s.IPHeaders, r, true)
@@ -171,13 +175,14 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Longitude:      city.Longitude,
 		Timezone:       city.Timezone,
 		ASN:            autonomousSystemNumber,
-		IN:            ispASN,
-		ISPO:            isp.ORG,
-		IO:            isp.Organization,
+		IN:             ispASN,
+		ISPO:           isp.ORG,
+		IO:             isp.Organization,
 		ISP:            isp.ISP,
 		ORG:            asn.AutonomousSystemOrganization,
-		ConnectionType:   connectiontype.ConnectionType,
+		ConnectionType: connectiontype.ConnectionType,
 		Hostname:       hostname,
+		UserAgent:      response.UserAgent,
 	}
 	s.cache.Set(ip, response)
 	response.UserAgent = userAgentFromRequest(r)
@@ -200,6 +205,15 @@ func (s *Server) newPortResponse(r *http.Request) (PortResponse, error) {
 		Port:      port,
 		Reachable: err == nil,
 	}, nil
+}
+
+func (s *Server) CLIUAHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintln(w, response.UserAgent)
+	return nil
 }
 
 func (s *Server) CLIHandler(w http.ResponseWriter, r *http.Request) *appError {
@@ -410,14 +424,14 @@ func NotFoundHandler(w http.ResponseWriter, r *http.Request) *appError {
 	return err
 }
 
-func cliMatcher(r *http.Request) bool {
-	ua := useragent.Parse(r.UserAgent())
-	switch ua.Product {
-	case "curl", "HTTPie", "httpie-go", "Wget", "fetch libfetch", "Go", "Go-http-client", "ddclient", "Mikrotik", "xh":
-		return true
-	}
-	return false
-}
+// func cliMatcher(r *http.Request) bool {
+// 	ua := useragent.Parse(r.UserAgent())
+// 	switch ua.Product {
+// 	case "curl", "HTTPie", "httpie-go", "Wget", "fetch libfetch", "Go", "Go-http-client", "ddclient", "Mikrotik", "xh":
+// 		return true
+// 	}
+// 	return false
+// }
 
 type appHandler func(http.ResponseWriter, *http.Request) *appError
 
@@ -465,7 +479,7 @@ func (s *Server) Handler() http.Handler {
 	r.Route("GET", "/json", s.JSONHandler)
 
 	// CLI
-	r.Route("GET", "/", s.CLIHandler).MatcherFunc(cliMatcher)
+	// r.Route("GET", "/", s.CLIHandler).MatcherFunc(cliMatcher)
 	r.Route("GET", "/", s.CLIHandler).Header("Accept", textMediaType)
 	r.Route("GET", "/ip", s.CLIHandler)
 	if !s.gr.IsEmpty() {
@@ -477,6 +491,7 @@ func (s *Server) Handler() http.Handler {
 		r.Route("GET", "/isp", s.CLIISPHandler)
 		r.Route("GET", "/org", s.CLIORGHandler)
 		r.Route("GET", "/connection_type", s.CLIConnHandler)
+		r.Route("GET", "/ua", s.CLIUAHandler)
 	}
 
 	// Browser

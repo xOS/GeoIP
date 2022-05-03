@@ -149,7 +149,7 @@
               </tr>
               {{ end }}{{ if .ConnectionType }}
               <tr>
-                <th scope="row">连接类型</th>
+                <th scope="row">网络类型</th>
                 <td>{{ .ConnectionType }}</td>
               </tr>
               {{ end }}{{ if .Hostname }}
@@ -157,22 +157,12 @@
                 <th scope="row">主机名</th>
                 <td>{{ .Hostname }}</td>
               </tr>
-              {{ end }} {{ if .UserAgent }} {{ if .UserAgent.Comment }}
+              {{ end }} {{ if .UserAgent }}
               <tr>
-                <th scope="row">User&nbsp;agent</th>
-                <td>{{ .UserAgent.Product }}/{{ .UserAgent.Version }}</td>
+                <th scope="row">User&nbsp;Agent</th>
+                <td>{{ .UserAgent }}</td>
               </tr>
-              {{ end }} {{ if .UserAgent.Comment }}
-              <tr>
-                <th scope="row">User&nbsp;agent: Comment</th>
-                <td>{{ .UserAgent.Comment }}</td>
-              </tr>
-              {{ end }} {{ if .UserAgent.RawValue }}
-              <tr>
-                <th scope="row">User&nbsp;agent: Raw</th>
-                <td>{{ .UserAgent.RawValue }}</td>
-              </tr>
-              {{ end }} {{ end }}
+              {{ end }}
             </table>
             {{ if .Country }}
             
