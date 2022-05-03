@@ -74,7 +74,7 @@
                 <td>{{ .IP }}</td>
               </tr>
               <tr>
-                <th scope="row">IP Decimal</th>
+                <th scope="row">Decimal</th>
                 <td>{{ .IPDecimal }}</td>
               </tr>
               {{ if .Country }}
@@ -94,12 +94,12 @@
               </tr>
               {{ end }} {{ if .RegionName }}
               <tr>
-                <th scope="row">省/州</th>
+                <th scope="row">省</th>
                 <td>{{ .RegionName }}</td>
               </tr>
               {{ end }} {{ if .RegionCode }}
               <tr>
-                <th scope="row">省/州代码</th>
+                <th scope="row">省代码</th>
                 <td>{{ .RegionCode }}</td>
               </tr>
               {{ end }} {{ if .MetroCode }}
@@ -159,7 +159,7 @@
               </tr>
               {{ end }} {{ if .UserAgent }}
               <tr>
-                <th scope="row">User&nbsp;Agent</th>
+                <th scope="row">用户代理</th>
                 <td>{{ .UserAgent }}</td>
               </tr>
               {{ end }}
@@ -226,7 +226,7 @@
                   org
                 </button>
                 <button
-                  name="ua"
+                  name="user_agent"
                   class="pure-button widget-select"
                   onclick="changeInput(this.name, this)"
                 >
