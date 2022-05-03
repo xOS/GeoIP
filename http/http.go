@@ -146,6 +146,12 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	if asn.AutonomousSystemNumber > 0 {
 		autonomousSystemNumber = fmt.Sprintf("AS%d", asn.AutonomousSystemNumber)
 	}
+	if asn.AutonomousSystemNumber == 0 {
+		autonomousSystemNumber = fmt.Sprintf("AS%d", isp.ASN)
+	}
+	if asn.AutonomousSystemOrganization == "" {
+		asn.AutonomousSystemOrganization = isp.Organization
+	}
 	if isp.ISP == "" {
 		isp.ISP = asn.AutonomousSystemOrganization
 	}
