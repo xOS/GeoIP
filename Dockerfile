@@ -1,18 +1,22 @@
-# Build
-FROM golang:1.16-buster AS build
-WORKDIR /go/src/github.com/xos/geoip
+FROM golang:alpine AS binarybuilder
+RUN apk --no-cache --no-progress add \
+    gcc git musl-dev
+WORKDIR /geoip
 COPY . .
+RUN cd cmd/geoip && go build -o app -ldflags="-s -w"
 
-# Must build without cgo because libc is unavailable in runtime image
-ENV GO111MODULE=on CGO_ENABLED=0
-RUN make
+FROM alpine:latest
+ENV TZ="Asia/Shanghai"
+RUN apk --no-cache --no-progress add \
+    ca-certificates \
+    tzdata && \
+    cp "/usr/share/zoneinfo/$TZ" /etc/localtime && \
+    echo "$TZ" >  /etc/timezone
+WORKDIR /geoip
+COPY ./data ./data
+COPY ./html ./html
+COPY --from=binarybuilder /geoip/cmd/geoip/app ./app
 
-# Run
-FROM scratch
-EXPOSE 8080
-
-COPY --from=build /go/bin/geoip /opt/geoip/
-COPY html /opt/geoip/html
-
-WORKDIR /opt/geoip
-ENTRYPOINT ["/opt/geoip/geoip"]
+VOLUME ["/geoip/data"]
+EXPOSE 8008 1212
+CMD ["/geoip/app"]
