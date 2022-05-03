@@ -1,11 +1,13 @@
 # GeoIP
 
-[![Build GeoIP Image And Push](https://github.com/xOS/GeoIP/actions/workflows/Push.yml/badge.svg)](https://github.com/xOS/GeoIP/actions/workflows/Push.yml)
+[![Build GeoIP And Push](https://github.com/xOS/GeoIP/actions/workflows/Push.yml/badge.svg)](https://github.com/xOS/GeoIP/actions/workflows/Push.yml)
+[![GeoIP Release](https://github.com/xOS/GeoIP/actions/workflows/Build.yml/badge.svg)](https://github.com/xOS/GeoIP/actions/workflows/Build.yml)
 
 A simple service for looking up your IP address. This is the code that powers
 https://ifconfig.co.
 
 ## 编译后运行
+
 ```bash
 ./geoip -l 0.0.0.0:1212 -a data/GeoLite2-ASN.mmdb -i data/GeoIP2-ISP.mmdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -n data/GeoIP2-Connection-Type.mmdb -H x-forwarded-for -r -s -p
 ```
@@ -137,7 +139,7 @@ Usage of geoip:
   -i string
     	Path to GeoIP ISP database
   -n string
-    	Path to GeoIP Connection Type database
+    	Path to GeoIP Connection-Type database
   -l string
     	Listening address (default ":8080")
   -p	Enable port lookup
