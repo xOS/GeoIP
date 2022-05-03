@@ -19,4 +19,4 @@ COPY --from=binarybuilder /geoip/cmd/geoip/app ./app
 
 VOLUME ["/geoip/data"]
 EXPOSE 8008 1212
-CMD ["/geoip/app"]
+CMD ["/geoip/app -a data/GeoLite2-ASN.mmdb -i data/GeoIP2-ISP.mmdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -n data/GeoIP2-Connection-Type.mmdb -H x-forwarded-for -r -s -p"]

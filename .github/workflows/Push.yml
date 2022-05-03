@@ -43,11 +43,11 @@ jobs:
       
       - name: Set Up Image Name
         run: |
-          GHRC_IMAGE_NAME=$(echo "ghcr.io/${{ github.repository_owner }}/server-dash" | tr '[:upper:]' '[:lower:]')
-          DOC_IMAGE_NAME=$(echo "nangle/server-dash" | tr '[:upper:]' '[:lower:]')
+          GHRC_IMAGE_NAME=$(echo "ghcr.io/${{ github.repository_owner }}/geoip" | tr '[:upper:]' '[:lower:]')
+          DOC_IMAGE_NAME=$(echo "nangle/geoip" | tr '[:upper:]' '[:lower:]')
           if [ ${{ github.repository_owner }} = "xOS" ]
-            then ALI_IMAGE_NAME=$(echo "registry.cn-shanghai.aliyuncs.com/dns/server-dash")
-            else ALI_IMAGE_NAME=$(echo "registry.cn-shanghai.aliyuncs.com/${{ github.repository_owner }}/server-dash" | tr '[:upper:]' '[:lower:]')
+            then ALI_IMAGE_NAME=$(echo "registry.cn-shanghai.aliyuncs.com/dns/geoip")
+            else ALI_IMAGE_NAME=$(echo "registry.cn-shanghai.aliyuncs.com/${{ github.repository_owner }}/geoip" | tr '[:upper:]' '[:lower:]')
           fi
           echo "::set-output name=GHRC_IMAGE_NAME::$GHRC_IMAGE_NAME"
           echo "::set-output name=ALI_IMAGE_NAME::$ALI_IMAGE_NAME"
