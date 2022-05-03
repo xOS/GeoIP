@@ -2,11 +2,13 @@ before:
   hooks:
     - go mod tidy -v
 builds:
-  - id: geoip
-    env:
+  - env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.arch={{.Arch}}
     goos:
       - linux
+      - windows
       - darwin
     goarch:
       - arm
@@ -21,15 +23,24 @@ builds:
         goarch: arm64
     main: ./cmd/geoip
     binary: geoip
+universal_binaries:
+  - name_template: "geoip"
+    replace: false
 checksum:
   name_template: "checksums.txt"
 snapshot:
-  name_template: "{{.ProjectName}}"
+  name_template: "geoip"
 archives:
   - name_template: "geoip_{{ .Os }}_{{ .Arch }}"
+    files:
+      - none*
 changelog:
   sort: asc
   filters:
     exclude:
       - "^docs:"
       - "^test:"
+      - "^chore"
+      - Merge pull request
+      - Merge branch
+      - go mod tidy
