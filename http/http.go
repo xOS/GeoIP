@@ -61,6 +61,10 @@ type Response struct {
 	UserAgent      string   `json:"user_agent,omitempty"`
 }
 
+type UA struct {
+	Product string `json:"product,omitempty"`
+}
+
 type PortResponse struct {
 	IP        net.IP `json:"ip"`
 	Port      uint64 `json:"port"`
@@ -423,6 +427,22 @@ func NotFoundHandler(w http.ResponseWriter, r *http.Request) *appError {
 	return err
 }
 
+func Parse(s string) UA {
+	parts := strings.SplitN(s, "/", 2)
+	return UA{
+		Product: parts[0],
+	}
+}
+
+func cliMatcher(r *http.Request) bool {
+	ua := Parse(r.UserAgent())
+	switch ua.Product {
+	case "curl", "HTTPie", "httpie-go", "Wget", "fetch libfetch", "Go", "Go-http-client", "ddclient", "Mikrotik", "xh":
+		return true
+	}
+	return false
+}
+
 type appHandler func(http.ResponseWriter, *http.Request) *appError
 
 func wrapHandlerFunc(f http.HandlerFunc) appHandler {
@@ -469,6 +489,7 @@ func (s *Server) Handler() http.Handler {
 	r.Route("GET", "/json", s.JSONHandler)
 
 	// CLI
+	r.Route("GET", "/", s.CLIHandler).MatcherFunc(cliMatcher)
 	r.Route("GET", "/", s.CLIHandler).Header("Accept", textMediaType)
 	r.Route("GET", "/ip", s.CLIHandler)
 	if !s.gr.IsEmpty() {
