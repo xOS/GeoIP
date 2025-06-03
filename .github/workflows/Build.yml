@@ -1,26 +1,35 @@
-name: GeoIP Release
+name: Release GeoIP
 
 on:
-  workflow_dispatch:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 jobs:
-  deploy:
+  goreleaser:
     runs-on: ubuntu-latest
+    # 关键：添加或修改这里的 permissions
+    permissions:
+      contents: write # 允许 GITHUB_TOKEN 写入仓库内容，包括创建 Release
+      # packages: write # 如果您还需要发布到 GitHub Packages
+      # id-token: write # 如果使用 OIDC
+
     steps:
-      - uses: actions/checkout@master
+      - name: Checkout
+        uses: actions/checkout@v3 # 或更新版本
         with:
-          fetch-depth: 0
-      - uses: actions/setup-go@v2
+          fetch-depth: 0 # GoReleaser 需要完整的 git 历史来生成 changelog
+
+      - name: Set up Go
+        uses: actions/setup-go@v3 # 或更新版本
         with:
-          go-version: "^1.18.0"
+          go-version: '1.x' # 指定您的 Go 版本
+
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@v5 # v2 比较旧了，建议使用更新的版本如 v5
         with:
-          distribution: goreleaser
-          version: latest
-          args: release
+          version: v2.0.0 # 指定 GoReleaser CLI 版本，或者 'latest'
+          args: release --clean # --clean 参数会删除 dist 目录
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 如果使用私有模块或需要其他 token，在这里设置
