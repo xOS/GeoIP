@@ -1,7 +1,7 @@
 {
   "name": "geoip",
   "description": "IP address lookup service",
-  "website": "https://ip.nan.ge",
+  "website": "https://ip.nange.cn",
   "repository": "https://github.com/xOS/geoip",
   "stack": "container",
   "success_url": "/"
