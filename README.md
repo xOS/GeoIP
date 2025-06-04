@@ -31,6 +31,9 @@ https://ifconfig.co.
 ```bash
 # 自动检测所有数据库格式（MMDB、BIN、CSV）
 ./geoip -auto -f data/GeoLite2-Country.mmdb -x data/IP2PROXY-LITE-PX12.BIN -l 0.0.0.0:1212
+
+# 或者直接使用（现在支持自动格式检测）
+./geoip -x data/IP2PROXY-LITE-PX12.BIN -l 0.0.0.0:1212
 ```
 
 

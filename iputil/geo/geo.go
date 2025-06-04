@@ -119,8 +119,8 @@ func OpenWithProxy(countryDB, cityDB string, asnDB string, ispDB string, connect
 		return geoipReader, nil
 	}
 
-	// Create IP2Proxy reader
-	ip2proxyReader, err := NewIP2ProxyReader(ip2proxyDB)
+	// Create IP2Proxy reader with auto-detection
+	ip2proxyReader, err := CreateReader(ip2proxyDB)
 	if err != nil {
 		return nil, err
 	}
