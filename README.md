@@ -7,8 +7,30 @@ A simple service for looking up your IP address. This is the code that powers
 https://ifconfig.co.
 
 ## 编译后运行
+
+### 使用 MaxMind GeoIP2 数据库
 ```bash
 ./geoip -l 0.0.0.0:1212 -a data/GeoLite2-ASN.mmdb -i data/GeoIP2-ISP.mmdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -n data/GeoIP2-Connection-Type.mmdb -H x-forwarded-for -r -s -p
+```
+
+### 使用 IP2Location IP2PROXY-LITE 数据库（完全替代 MaxMind）
+```bash
+# CSV 格式
+./geoip -l 0.0.0.0:1212 -x data/IP2PROXY-LITE-PX12.CSV -H x-forwarded-for -r -s -p
+
+# BIN 格式（推荐，性能更好）
+./geoip -l 0.0.0.0:1212 -x data/IP2PROXY-LITE-PX12.BIN -H x-forwarded-for -r -s -p
+```
+
+### 同时使用 MaxMind 和 IP2Proxy 数据库
+```bash
+./geoip -l 0.0.0.0:1212 -a data/GeoLite2-ASN.mmdb -i data/GeoIP2-ISP.mmdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -n data/GeoIP2-Connection-Type.mmdb -x data/IP2PROXY-LITE-PX2.CSV -H x-forwarded-for -r -s -p
+```
+
+### 自动检测数据库格式
+```bash
+# 自动检测所有数据库格式（MMDB、BIN、CSV）
+./geoip -auto -f data/GeoLite2-Country.mmdb -x data/IP2PROXY-LITE-PX12.BIN -l 0.0.0.0:1212
 ```
 
 
@@ -49,18 +71,57 @@ $ curl ifconfig.co/asn
 AS59795
 ```
 
+Proxy detection and security information:
+
+```
+$ curl ifconfig.co/proxy
+false
+
+$ curl ifconfig.co/proxy_type
+VPN
+
+$ curl ifconfig.co/domain
+example.com
+
+$ curl ifconfig.co/usage_type
+DCH
+
+$ curl ifconfig.co/threat
+BOTNET
+
+$ curl ifconfig.co/fraud_score
+95
+
+$ curl ifconfig.co/last_seen
+30
+```
+
 As JSON:
 
 ```
 $ curl -H 'Accept: application/json' ifconfig.co  # or curl ifconfig.co/json
 {
-  "city": "Bornyasherk",
-  "country": "Elbonia",
-  "country_iso": "EB",
-  "ip": "127.0.0.1",
-  "ip_decimal": 2130706433,
-  "asn": "AS59795",
-  "asn_org": "Hosting4Real"
+  "ip": "1.0.0.1",
+  "ip_decimal": 16777217,
+  "country": "United States",
+  "country_code": "US",
+  "region": "California",
+  "city": "Los Angeles",
+  "asn": "AS15169",
+  "isp": "Example ISP",
+  "org": "Google LLC",
+  "isp_org": "Google LLC",
+  "isp_asn_org": "Google LLC",
+  "isp_asn": "AS15169",
+  "connection_type": "DCH",
+  "is_proxy": true,
+  "proxy_type": "PUB",
+  "domain": "example.com",
+  "usage_type": "DCH",
+  "last_seen": "30",
+  "fraud_score": "80",
+  "hostname": "one.one.one.one",
+  "user_agent": "curl/8.7.1"
 }
 ```
 
@@ -86,7 +147,13 @@ between IPv4 and IPv6 lookup.
 * Supports HTTPS
 * Supports common command-line clients (e.g. `curl`, `httpie`, `ht`, `wget` and `fetch`)
 * JSON output
-* ASN, country and city lookup using the MaxMind GeoIP database
+* Complete geolocation data: country, region, city, ASN, ISP information
+* **Multi-format database support**: MMDB, BIN, CSV formats
+* Support for both MaxMind GeoIP2 and IP2Location databases
+* **Auto-detection** of database formats for seamless integration
+* IP2Location databases can completely replace MaxMind databases
+* Proxy detection using IP2Location IP2PROXY-LITE database
+* Support for multiple proxy types: VPN, TOR, PUB (Public Proxy), DCH (Data Center), WEB, SES, RES, CPN, EPN
 * Port testing
 * All endpoints (except `/port`) can return information about a custom IP address specified via `?ip=` query parameter
 * Open source under the [BSD 3-Clause license](https://opensource.org/licenses/BSD-3-Clause)
@@ -139,6 +206,10 @@ Usage of geoip:
     	Path to GeoIP ISP database
   -n string
     	Path to GeoIP Connection-Type database
+  -x string
+    	Path to IP2Proxy database (CSV/BIN)
+  -auto
+    	Auto-detect database formats
   -l string
     	Listening address (default ":8080")
   -p	Enable port lookup

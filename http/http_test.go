@@ -38,6 +38,21 @@ func (t *testDb) ConnectionType(net.IP) (geo.ConnectionType, error) {
 	return geo.ConnectionType{ConnectionType: "Corporate"}, nil
 }
 
+func (t *testDb) Proxy(net.IP) (geo.Proxy, error) {
+	return geo.Proxy{
+		IsProxy:     false,
+		ProxyType:   "",
+		Country:     "",
+		CountryCode: "",
+		Domain:      "",
+		UsageType:   "",
+		LastSeen:    "",
+		Threat:      "",
+		Provider:    "",
+		FraudScore:  "",
+	}, nil
+}
+
 func (t *testDb) IsEmpty() bool { return false }
 
 func testServer() *Server {
@@ -97,7 +112,7 @@ func TestCLIHandlers(t *testing.T) {
 		{s.URL, "127.0.0.1\n", 200, "foo/bar", textMediaType},
 		{s.URL + "/ip", "127.0.0.1\n", 200, "", ""},
 		{s.URL + "/country", "Elbonia\n", 200, "", ""},
-		{s.URL + "/country-code", "EB\n", 200, "", ""},
+		{s.URL + "/country_code", "EB\n", 200, "", ""},
 		{s.URL + "/coordinates", "63.416667,10.416667\n", 200, "", ""},
 		{s.URL + "/city", "Bornyasherk\n", 200, "", ""},
 		{s.URL + "/foo", "404 page not found", 404, "", ""},
@@ -161,7 +176,7 @@ func TestJSONHandlers(t *testing.T) {
 		out    string
 		status int
 	}{
-		{s.URL, "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"country\": \"Elbonia\",\n  \"country_code\": \"EB\",\n  \"country_eu\": false,\n  \"region\": \"North Elbonia\",\n  \"region_code\": \"1234\",\n  \"metro_code\": 1234,\n  \"zip_code\": \"1234\",\n  \"city\": \"Bornyasherk\",\n  \"latitude\": 63.416667,\n  \"longitude\": 10.416667,\n  \"time_zone\": \"Europe/Bornyasherk\",\n  \"asn\": \"AS59795\",\n  \"asn_org\": \"Hosting4Real\",\n  \"hostname\": \"localhost\",\n  \"user_agent\": {\n    \"product\": \"curl\",\n    \"version\": \"7.2.6.0\",\n    \"raw_value\": \"curl/7.2.6.0\"\n  }\n}", 200},
+		{s.URL, "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"country\": \"Elbonia\",\n  \"country_code\": \"EB\",\n  \"country_eu\": false,\n  \"region\": \"North Elbonia\",\n  \"region_code\": \"1234\",\n  \"metro_code\": 1234,\n  \"zip_code\": \"1234\",\n  \"city\": \"Bornyasherk\",\n  \"latitude\": 63.416667,\n  \"longitude\": 10.416667,\n  \"time_zone\": \"Europe/Bornyasherk\",\n  \"asn\": \"AS59795\",\n  \"isp\": \"Hosting4Real\",\n  \"org\": \"Hosting4Real\",\n  \"connection_type\": \"Corporate\",\n  \"hostname\": \"localhost\",\n  \"user_agent\": \"curl/7.2.6.0\"\n}", 200},
 		{s.URL + "/port/foo", "{\n  \"status\": 400,\n  \"error\": \"invalid port: foo\"\n}", 400},
 		{s.URL + "/port/0", "{\n  \"status\": 400,\n  \"error\": \"invalid port: 0\"\n}", 400},
 		{s.URL + "/port/65537", "{\n  \"status\": 400,\n  \"error\": \"invalid port: 65537\"\n}", 400},

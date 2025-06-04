@@ -1,0 +1,195 @@
+package geo
+
+import (
+	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// DatabaseType represents the type of database
+type DatabaseType int
+
+const (
+	DatabaseTypeUnknown DatabaseType = iota
+	DatabaseTypeMaxMindMMDB
+	DatabaseTypeIP2LocationBIN
+	DatabaseTypeIP2ProxyBIN
+	DatabaseTypeIP2ProxyCSV
+)
+
+// DatabaseInfo contains information about a database file
+type DatabaseInfo struct {
+	Type     DatabaseType
+	Path     string
+	IsProxy  bool
+	Provider string
+}
+
+// DetectDatabaseType detects the type of database based on file extension and content
+func DetectDatabaseType(path string) (DatabaseType, error) {
+	if path == "" {
+		return DatabaseTypeUnknown, nil
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return DatabaseTypeUnknown, fmt.Errorf("database file does not exist: %s", path)
+	}
+
+	ext := strings.ToLower(filepath.Ext(path))
+	filename := strings.ToLower(filepath.Base(path))
+
+	// Detect by file extension
+	switch ext {
+	case ".mmdb":
+		return DatabaseTypeMaxMindMMDB, nil
+	case ".csv":
+		// Check if it's IP2Proxy CSV
+		if strings.Contains(filename, "ip2proxy") || strings.Contains(filename, "proxy") {
+			return DatabaseTypeIP2ProxyCSV, nil
+		}
+		return DatabaseTypeUnknown, fmt.Errorf("unknown CSV database type: %s", path)
+	case ".bin":
+		// Check if it's IP2Proxy or IP2Location BIN
+		if strings.Contains(filename, "ip2proxy") || strings.Contains(filename, "proxy") {
+			return DatabaseTypeIP2ProxyBIN, nil
+		}
+		return DatabaseTypeIP2LocationBIN, nil
+	default:
+		// Try to detect by filename patterns
+		if strings.Contains(filename, "ip2proxy") || strings.Contains(filename, "proxy") {
+			if strings.Contains(filename, ".csv") {
+				return DatabaseTypeIP2ProxyCSV, nil
+			}
+			return DatabaseTypeIP2ProxyBIN, nil
+		}
+		if strings.Contains(filename, "ip2location") || strings.Contains(filename, "geolite") || strings.Contains(filename, "geoip") {
+			if strings.Contains(filename, ".mmdb") {
+				return DatabaseTypeMaxMindMMDB, nil
+			}
+			return DatabaseTypeIP2LocationBIN, nil
+		}
+		return DatabaseTypeUnknown, fmt.Errorf("unknown database type: %s", path)
+	}
+}
+
+// CreateReader creates a Reader based on the database type
+func CreateReader(path string) (Reader, error) {
+	if path == "" {
+		return &EmptyReader{}, nil
+	}
+
+	dbType, err := DetectDatabaseType(path)
+	if err != nil {
+		return nil, err
+	}
+
+	switch dbType {
+	case DatabaseTypeMaxMindMMDB:
+		// For MaxMind MMDB, we need to determine what type it is
+		// This is a simplified approach - in practice you might want to check the database metadata
+		return createMaxMindReader(path)
+	case DatabaseTypeIP2LocationBIN:
+		return NewIP2LocationBinReader(path)
+	case DatabaseTypeIP2ProxyBIN:
+		return NewIP2ProxyBinReader(path)
+	case DatabaseTypeIP2ProxyCSV:
+		return NewIP2ProxyReader(path)
+	default:
+		return nil, fmt.Errorf("unsupported database type for file: %s", path)
+	}
+}
+
+// createMaxMindReader creates a MaxMind reader (simplified version)
+func createMaxMindReader(path string) (Reader, error) {
+	// This is a simplified approach - we create a basic geoip reader
+	// In practice, you might want to detect the specific MaxMind database type
+	return OpenWithProxy(path, "", "", "", "", "")
+}
+
+// EmptyReader is a no-op reader for empty database paths
+type EmptyReader struct{}
+
+func (e *EmptyReader) Country(net.IP) (Country, error)               { return Country{}, nil }
+func (e *EmptyReader) City(net.IP) (City, error)                     { return City{}, nil }
+func (e *EmptyReader) ASN(net.IP) (ASN, error)                       { return ASN{}, nil }
+func (e *EmptyReader) ISP(net.IP) (ISP, error)                       { return ISP{}, nil }
+func (e *EmptyReader) ConnectionType(net.IP) (ConnectionType, error) { return ConnectionType{}, nil }
+func (e *EmptyReader) Proxy(net.IP) (Proxy, error)                   { return Proxy{}, nil }
+func (e *EmptyReader) IsEmpty() bool                                 { return true }
+
+// OpenAuto automatically detects database types and creates appropriate readers
+func OpenAuto(databases ...string) (Reader, error) {
+	var readers []Reader
+	var hasData bool
+
+	for _, dbPath := range databases {
+		if dbPath == "" {
+			continue
+		}
+
+		reader, err := CreateReader(dbPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create reader for %s: %v", dbPath, err)
+		}
+
+		if !reader.IsEmpty() {
+			readers = append(readers, reader)
+			hasData = true
+		}
+	}
+
+	if !hasData {
+		return &EmptyReader{}, nil
+	}
+
+	if len(readers) == 1 {
+		return readers[0], nil
+	}
+
+	// Combine multiple readers
+	return createCombinedReader(readers), nil
+}
+
+// createCombinedReader creates a combined reader from multiple readers
+func createCombinedReader(readers []Reader) Reader {
+	if len(readers) == 0 {
+		return &EmptyReader{}
+	}
+	if len(readers) == 1 {
+		return readers[0]
+	}
+
+	// For now, use the first two readers in a combined reader
+	// In a more sophisticated implementation, you might want to prioritize by type
+	return NewCombinedReader(readers[0], readers[1])
+}
+
+// GetDatabaseInfo returns information about a database file
+func GetDatabaseInfo(path string) (*DatabaseInfo, error) {
+	dbType, err := DetectDatabaseType(path)
+	if err != nil {
+		return nil, err
+	}
+
+	info := &DatabaseInfo{
+		Type: dbType,
+		Path: path,
+	}
+
+	switch dbType {
+	case DatabaseTypeIP2ProxyBIN, DatabaseTypeIP2ProxyCSV:
+		info.IsProxy = true
+		info.Provider = "IP2Location"
+	case DatabaseTypeIP2LocationBIN:
+		info.IsProxy = false
+		info.Provider = "IP2Location"
+	case DatabaseTypeMaxMindMMDB:
+		info.IsProxy = false
+		info.Provider = "MaxMind"
+	}
+
+	return info, nil
+}

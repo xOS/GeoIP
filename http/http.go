@@ -57,6 +57,14 @@ type Response struct {
 	ISPO           string   `json:"isp_asn_org,omitempty"`
 	IN             string   `json:"isp_asn,omitempty"`
 	ConnectionType string   `json:"connection_type,omitempty"`
+	IsProxy        bool     `json:"is_proxy,omitempty"`
+	ProxyType      string   `json:"proxy_type,omitempty"`
+	Domain         string   `json:"domain,omitempty"`
+	UsageType      string   `json:"usage_type,omitempty"`
+	LastSeen       string   `json:"last_seen,omitempty"`
+	Threat         string   `json:"threat,omitempty"`
+	Provider       string   `json:"provider,omitempty"`
+	FraudScore     string   `json:"fraud_score,omitempty"`
 	Hostname       string   `json:"hostname,omitempty"`
 	UserAgent      string   `json:"user_agent,omitempty"`
 }
@@ -142,6 +150,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	asn, _ := s.gr.ASN(ip)
 	isp, _ := s.gr.ISP(ip)
 	connectiontype, _ := s.gr.ConnectionType(ip)
+	proxy, _ := s.gr.Proxy(ip)
 	var hostname string
 	if s.LookupAddr != nil {
 		hostname, _ = s.LookupAddr(ip)
@@ -184,6 +193,14 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		ISP:            isp.ISP,
 		ORG:            asn.AutonomousSystemOrganization,
 		ConnectionType: connectiontype.ConnectionType,
+		IsProxy:        proxy.IsProxy,
+		ProxyType:      proxy.ProxyType,
+		Domain:         proxy.Domain,
+		UsageType:      proxy.UsageType,
+		LastSeen:       proxy.LastSeen,
+		Threat:         proxy.Threat,
+		Provider:       proxy.Provider,
+		FraudScore:     proxy.FraudScore,
 		Hostname:       hostname,
 		UserAgent:      response.UserAgent,
 	}
@@ -297,6 +314,82 @@ func (s *Server) CLIConnHandler(w http.ResponseWriter, r *http.Request) *appErro
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
 	fmt.Fprintf(w, "%s\n", response.ConnectionType)
+	return nil
+}
+
+func (s *Server) CLIProxyHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	if response.IsProxy {
+		fmt.Fprintln(w, "true")
+	} else {
+		fmt.Fprintln(w, "false")
+	}
+	return nil
+}
+
+func (s *Server) CLIProxyTypeHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.ProxyType)
+	return nil
+}
+
+func (s *Server) CLIDomainHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.Domain)
+	return nil
+}
+
+func (s *Server) CLIUsageTypeHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.UsageType)
+	return nil
+}
+
+func (s *Server) CLILastSeenHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.LastSeen)
+	return nil
+}
+
+func (s *Server) CLIThreatHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.Threat)
+	return nil
+}
+
+func (s *Server) CLIProviderHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.Provider)
+	return nil
+}
+
+func (s *Server) CLIFraudScoreHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.FraudScore)
 	return nil
 }
 
@@ -501,6 +594,14 @@ func (s *Server) Handler() http.Handler {
 		r.Route("GET", "/isp", s.CLIISPHandler)
 		r.Route("GET", "/org", s.CLIORGHandler)
 		r.Route("GET", "/connection_type", s.CLIConnHandler)
+		r.Route("GET", "/proxy", s.CLIProxyHandler)
+		r.Route("GET", "/proxy_type", s.CLIProxyTypeHandler)
+		r.Route("GET", "/domain", s.CLIDomainHandler)
+		r.Route("GET", "/usage_type", s.CLIUsageTypeHandler)
+		r.Route("GET", "/last_seen", s.CLILastSeenHandler)
+		r.Route("GET", "/threat", s.CLIThreatHandler)
+		r.Route("GET", "/provider", s.CLIProviderHandler)
+		r.Route("GET", "/fraud_score", s.CLIFraudScoreHandler)
 		r.Route("GET", "/ua", s.CLIUAHandler)
 	}
 

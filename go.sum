@@ -1,4 +1,10 @@
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
+github.com/ip2location/ip2location-go/v9 v9.7.1 h1:eXu/DqS13QE0h1Yrc9oji+6/anLD9KDf6Ulf5GdIQs8=
+github.com/ip2location/ip2location-go/v9 v9.7.1/go.mod h1:MPLnsKxwQlvd2lBNcQCsLoyzJLDBFizuO67wXXdzoyI=
+github.com/ip2location/ip2proxy-go v3.0.0+incompatible h1:Huqkp/Lw24CAT4a+UyupNmEoFGmrJAIerqPgMdb5x/A=
+github.com/ip2location/ip2proxy-go v3.0.0+incompatible/go.mod h1:ntasiq+RCKmbpZN+0Ng7qlq5Gw/C4urmGeXaV6z2DqA=
+github.com/ip2location/ip2proxy-go/v4 v4.1.0 h1:eHd4WL6Fk21TcKRXxCuyBTcW2ZPfWWiAA5Qd5PCM1G4=
+github.com/ip2location/ip2proxy-go/v4 v4.1.0/go.mod h1:knSLTGvow2tCTxGuZNACMiqRW7h9u/F7KFrPa8HBJ8U=
 github.com/oschwald/geoip2-golang v1.7.0 h1:JW1r5AKi+vv2ujSxjKthySK3jo8w8oKWPyXsw+Qs/S8=
 github.com/oschwald/geoip2-golang v1.7.0/go.mod h1:mdI/C7iK7NVMcIDDtf4bCKMJ7r0o7UwGeCo9eiitCMQ=
 github.com/oschwald/maxminddb-golang v1.9.0 h1:tIk4nv6VT9OiPyrnDAfJS1s1xKDQMZOsGojab6EjC1Y=
@@ -8,3 +14,5 @@ github.com/stretchr/testify v1.7.1 h1:5TQK59W5E3v0r2duFAb7P95B6hEeOyEnHRa8MjYSMT
 golang.org/x/sys v0.0.0-20220502124256-b6088ccd6cba h1:AyHWHCBVlIYI5rgEM3o+1PLd0sLPcIAoaUckGQMaWtw=
 golang.org/x/sys v0.0.0-20220502124256-b6088ccd6cba/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie2QXMNeKRTHCNY2nXvo=
+lukechampine.com/uint128 v1.2.0 h1:mBi/5l91vocEN8otkC5bDLhi2KdCticRiwbdB0O+rjI=
+lukechampine.com/uint128 v1.2.0/go.mod h1:c4eWIwlEGaxC/+H1VguhU4PHXNWDCDMUlWdIWl2j1gk=

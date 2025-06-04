@@ -13,6 +13,7 @@ type Reader interface {
 	ASN(net.IP) (ASN, error)
 	ISP(net.IP) (ISP, error)
 	ConnectionType(net.IP) (ConnectionType, error)
+	Proxy(net.IP) (Proxy, error)
 	IsEmpty() bool
 }
 
@@ -39,25 +40,42 @@ type ASN struct {
 }
 
 type ISP struct {
-	ASN       uint
-	ORG string
-	ISP                          string
-	Organization                 string
+	ASN          uint
+	ORG          string
+	ISP          string
+	Organization string
 }
 
 type ConnectionType struct {
 	ConnectionType string
 }
 
+type Proxy struct {
+	IsProxy     bool
+	ProxyType   string
+	Country     string
+	CountryCode string
+	Domain      string
+	UsageType   string
+	LastSeen    string
+	Threat      string
+	Provider    string
+	FraudScore  string
+}
+
 type geoip struct {
-	country *geoip2.Reader
-	city    *geoip2.Reader
-	asn     *geoip2.Reader
-	isp     *geoip2.Reader
-	connectiontype     *geoip2.Reader
+	country        *geoip2.Reader
+	city           *geoip2.Reader
+	asn            *geoip2.Reader
+	isp            *geoip2.Reader
+	connectiontype *geoip2.Reader
 }
 
 func Open(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB string) (Reader, error) {
+	return OpenWithProxy(countryDB, cityDB, asnDB, ispDB, connectiontypeDB, "")
+}
+
+func OpenWithProxy(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB string, ip2proxyDB string) (Reader, error) {
 	var country, city, asn, isp, connectiontype *geoip2.Reader
 	if countryDB != "" {
 		r, err := geoip2.Open(countryDB)
@@ -94,7 +112,21 @@ func Open(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB
 		}
 		connectiontype = r
 	}
-	return &geoip{country: country, city: city, asn: asn, isp: isp, connectiontype: connectiontype}, nil
+	geoipReader := &geoip{country: country, city: city, asn: asn, isp: isp, connectiontype: connectiontype}
+
+	// If no IP2Proxy database specified, return just the GeoIP reader
+	if ip2proxyDB == "" {
+		return geoipReader, nil
+	}
+
+	// Create IP2Proxy reader
+	ip2proxyReader, err := NewIP2ProxyReader(ip2proxyDB)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return combined reader
+	return NewCombinedReader(geoipReader, ip2proxyReader), nil
 }
 
 func (g *geoip) Country(ip net.IP) (Country, error) {
@@ -218,6 +250,13 @@ func (g *geoip) ConnectionType(ip net.IP) (ConnectionType, error) {
 		connectiontype.ConnectionType = record.ConnectionType
 	}
 	return connectiontype, nil
+}
+
+func (g *geoip) Proxy(ip net.IP) (Proxy, error) {
+	proxy := Proxy{}
+	// For now, return empty proxy info since this is for MaxMind databases
+	// IP2Proxy functionality will be implemented separately
+	return proxy, nil
 }
 
 func (g *geoip) IsEmpty() bool {

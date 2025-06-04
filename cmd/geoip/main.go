@@ -33,6 +33,8 @@ func main() {
 	asnFile := flag.String("a", "", "Path to GeoIP ASN database")
 	ispFile := flag.String("i", "", "Path to GeoIP ISP database")
 	connFile := flag.String("n", "", "Path to GeoIP2 Connection-Type database")
+	ip2proxyFile := flag.String("x", "", "Path to IP2Proxy database (CSV/BIN)")
+	autoDetect := flag.Bool("auto", false, "Auto-detect database formats")
 	listen := flag.String("l", ":1212", "Listening address")
 	reverseLookup := flag.Bool("r", true, "Perform reverse hostname lookups")
 	portLookup := flag.Bool("p", true, "Enable port lookup")
@@ -48,9 +50,23 @@ func main() {
 		return
 	}
 
-	r, err := geo.Open(*countryFile, *cityFile, *asnFile, *ispFile, *connFile)
-	if err != nil {
-		log.Fatal(err)
+	var r geo.Reader
+	var err error
+
+	if *autoDetect {
+		// Auto-detect database formats
+		databases := []string{*countryFile, *cityFile, *asnFile, *ispFile, *connFile, *ip2proxyFile}
+		r, err = geo.OpenAuto(databases...)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Using auto-detection for database formats")
+	} else {
+		// Use traditional method
+		r, err = geo.OpenWithProxy(*countryFile, *cityFile, *asnFile, *ispFile, *connFile, *ip2proxyFile)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	cache := http.NewCache(*cacheSize)
 	server := http.New(r, cache, *profile)
