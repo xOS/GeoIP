@@ -30,7 +30,59 @@
 - Verify file integrity
 - Check file permissions
 
-### 2. Database Format Detection
+### 2. Empty Data Results (All Fields Show "-")
+
+#### Error: JSON response shows all fields as "-" or empty
+
+**Example problematic output:**
+```json
+{
+  "ip": "23.80.81.125",
+  "country": "-",
+  "city": "-",
+  "is_proxy": false,
+  "proxy_type": "-"
+}
+```
+
+**Causes and Solutions:**
+
+1. **IP not in database coverage**
+   ```bash
+   # Use diagnostic tool to check
+   ./geoip-debug data/your-database.bin 23.80.81.125
+
+   # Test with known IPs
+   curl "http://localhost:8080/json?ip=8.8.8.8"
+   ```
+
+2. **Database file is incomplete or corrupted**
+   ```bash
+   # Check file size
+   ls -la data/your-database.bin
+
+   # Re-download the database
+   # Verify file integrity
+   ```
+
+3. **Wrong database type for your needs**
+   - IP2Proxy databases focus on proxy detection
+   - IP2Location databases focus on geolocation
+   - Choose the right database for your use case
+
+4. **Database version is outdated**
+   - Download the latest version
+   - Some IP ranges may not be covered in older versions
+
+#### Quick diagnosis:
+```bash
+# Test multiple IPs to see if database works at all
+curl "http://localhost:8080/json?ip=8.8.8.8"    # Google DNS
+curl "http://localhost:8080/json?ip=1.1.1.1"    # Cloudflare DNS
+curl "http://localhost:8080/json?ip=208.67.222.222"  # OpenDNS
+```
+
+### 3. Database Format Detection
 
 #### How to verify format detection:
 
@@ -130,28 +182,31 @@
 
 ### 6. Debugging
 
-#### Enable verbose logging:
+#### Use the built-in diagnostic tool:
 
 ```bash
-# Add debug output (if implemented)
-./geoip -x data/proxy.bin -l :8080 -v
+# Build the diagnostic tool
+go build ./cmd/geoip-debug
 
-# Check format detection manually
-go run -c "
-package main
-import (
-    \"fmt\"
-    \"github.com/xos/geoip/iputil/geo\"
-)
-func main() {
-    info, err := geo.GetDatabaseInfo(\"data/your-file.bin\")
-    if err != nil {
-        panic(err)
-    }
-    fmt.Printf(\"Type: %v, Provider: %s, IsProxy: %t\\n\", 
-        info.Type, info.Provider, info.IsProxy)
-}
-"
+# Test your database
+./geoip-debug data/IP2PROXY-LITE-PX12.BIN
+
+# Test with specific IP
+./geoip-debug data/IP2PROXY-LITE-PX12.BIN 23.80.81.125
+
+# Test format detection
+./geoip-debug data/your-database-file.csv
+```
+
+#### Manual debugging:
+
+```bash
+# Check if file exists and size
+ls -la data/your-database-file.bin
+
+# Test with known working IPs
+curl "http://localhost:8080/json?ip=8.8.8.8"
+curl "http://localhost:8080/json?ip=1.1.1.1"
 ```
 
 #### Test specific IPs:
