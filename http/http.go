@@ -165,13 +165,27 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	if asn.AutonomousSystemOrganization == "" {
 		asn.AutonomousSystemOrganization = isp.Organization
 	}
-	if isp.ISP == "" {
-		isp.ISP = asn.AutonomousSystemOrganization
+	// ISP 字段回退逻辑：如果 ISP 为空，使用 org 字段内容
+	if isp.ISP == "" || isp.ISP == "-" {
+		if isp.Organization != "" && isp.Organization != "-" {
+			isp.ISP = isp.Organization
+		} else if asn.AutonomousSystemOrganization != "" && asn.AutonomousSystemOrganization != "-" {
+			isp.ISP = asn.AutonomousSystemOrganization
+		}
 	}
 	var ispASN string
 	if isp.ASN > 0 {
 		ispASN = fmt.Sprintf("AS%d", isp.ASN)
 	}
+	// 清理代理字段，避免显示 "-"
+	proxyType := cleanProxyField(proxy.ProxyType)
+	domain := cleanProxyField(proxy.Domain)
+	usageType := cleanProxyField(proxy.UsageType)
+	lastSeen := cleanProxyField(proxy.LastSeen)
+	threat := cleanProxyField(proxy.Threat)
+	provider := cleanProxyField(proxy.Provider)
+	fraudScore := cleanProxyField(proxy.FraudScore)
+
 	response = Response{
 		IP:             ip,
 		IPDecimal:      ipDecimal,
@@ -194,13 +208,13 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		ORG:            asn.AutonomousSystemOrganization,
 		ConnectionType: connectiontype.ConnectionType,
 		IsProxy:        proxy.IsProxy,
-		ProxyType:      proxy.ProxyType,
-		Domain:         proxy.Domain,
-		UsageType:      proxy.UsageType,
-		LastSeen:       proxy.LastSeen,
-		Threat:         proxy.Threat,
-		Provider:       proxy.Provider,
-		FraudScore:     proxy.FraudScore,
+		ProxyType:      proxyType,
+		Domain:         domain,
+		UsageType:      usageType,
+		LastSeen:       lastSeen,
+		Threat:         threat,
+		Provider:       provider,
+		FraudScore:     fraudScore,
 		Hostname:       hostname,
 		UserAgent:      response.UserAgent,
 	}
@@ -635,4 +649,12 @@ func (s *Server) ListenAndServe(addr string) error {
 
 func formatCoordinate(c float64) string {
 	return strconv.FormatFloat(c, 'f', 6, 64)
+}
+
+// cleanProxyField 清理代理字段，将 "-" 转换为空字符串
+func cleanProxyField(field string) string {
+	if field == "-" || field == "" {
+		return ""
+	}
+	return field
 }

@@ -100,6 +100,27 @@ curl http://localhost:8080/json?ip=1.2.3.4
 - `GET /proxy` - Returns "true" or "false" for proxy detection
 - `GET /proxy_type` - Returns the proxy type (VPN, TOR, PUB, etc.)
 
+### Field Data Sources
+
+#### Proxy-related Fields (IP2Proxy only)
+These fields are **only available when using IP2Proxy databases**:
+
+- `proxy_type`: Proxy type (VPN, TOR, PUB, etc.)
+- `domain`: Associated domain name
+- `usage_type`: Usage classification (DCH, ISP, VPN, etc.)
+- `last_seen`: Days since last seen
+- `threat`: Threat classification
+- `provider`: Service provider name
+- `fraud_score`: Fraud risk score
+
+**Note**: When using only MaxMind databases, these fields will not appear in the JSON response.
+
+#### ISP Field Fallback Logic
+The `isp` field uses intelligent fallback:
+1. **Primary**: Use ISP field from database
+2. **Fallback**: If ISP is empty ("-"), use Organization field
+3. **Final fallback**: Use ASN Organization field
+
 ### JSON Response Format
 
 When using IP2Proxy, the JSON response includes additional fields:
