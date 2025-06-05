@@ -57,7 +57,7 @@ type Response struct {
 	ISPO           string   `json:"isp_asn_org,omitempty"`
 	IN             string   `json:"isp_asn,omitempty"`
 	ConnectionType string   `json:"connection_type,omitempty"`
-	IsProxy        bool     `json:"is_proxy,omitempty"`
+	IsProxy        bool     `json:"is_proxy"`
 	ProxyType      string   `json:"proxy_type,omitempty"`
 	Domain         string   `json:"domain,omitempty"`
 	UsageType      string   `json:"usage_type,omitempty"`
@@ -651,8 +651,10 @@ func formatCoordinate(c float64) string {
 	return strconv.FormatFloat(c, 'f', 6, 64)
 }
 
-// cleanProxyField 清理代理字段，将 "-" 转换为空字符串
+// cleanProxyField 清理代理字段，只要有内容就显示
 func cleanProxyField(field string) string {
+	// 只有当字段为 "-" 或空字符串时才返回空字符串（触发 omitempty）
+	// 其他任何内容都显示
 	if field == "-" || field == "" {
 		return ""
 	}

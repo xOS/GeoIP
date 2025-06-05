@@ -102,8 +102,8 @@ curl http://localhost:8080/json?ip=1.2.3.4
 
 ### Field Data Sources
 
-#### Proxy-related Fields (IP2Proxy only)
-These fields are **only available when using IP2Proxy databases**:
+#### Proxy-related Fields (Smart Display)
+These fields are displayed **only when they have content**:
 
 - `proxy_type`: Proxy type (VPN, TOR, PUB, etc.)
 - `domain`: Associated domain name
@@ -113,7 +113,11 @@ These fields are **only available when using IP2Proxy databases**:
 - `provider`: Service provider name
 - `fraud_score`: Fraud risk score
 
-**Note**: When using only MaxMind databases, these fields will not appear in the JSON response.
+**Smart Display Logic**:
+- Fields only appear in JSON when they have meaningful content
+- Empty fields ("-" or "") are omitted from the response
+- Works in both pure IP2Proxy mode and mixed mode
+- Partial data is supported (only fields with content are shown)
 
 #### ISP Field Fallback Logic
 The `isp` field uses intelligent fallback:
