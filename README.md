@@ -27,13 +27,19 @@ https://ifconfig.co.
 ./geoip -l 0.0.0.0:1212 -a data/GeoLite2-ASN.mmdb -i data/GeoIP2-ISP.mmdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -n data/GeoIP2-Connection-Type.mmdb -x data/IP2PROXY-LITE-PX2.CSV -H x-forwarded-for -r -s -p
 ```
 
-### 自动检测数据库格式
+### 自动检测数据库格式（推荐）
 ```bash
-# 自动检测所有数据库格式（MMDB、BIN、CSV）
-./geoip -auto -f data/GeoLite2-Country.mmdb -x data/IP2PROXY-LITE-PX12.BIN -l 0.0.0.0:1212
+# 现在所有参数都支持自动格式检测，可以混合使用不同格式
+./geoip -f data/GeoLite2-Country.mmdb -x data/IP2PROXY-LITE-PX12.BIN -l 0.0.0.0:1212
 
-# 或者直接使用（现在支持自动格式检测）
+# IP2Location BIN 可以放在任何参数位置，自动识别
+./geoip -f data/IP2LOCATION-LITE-DB1.BIN -c data/GeoLite2-City.mmdb -l 0.0.0.0:1212
+
+# 纯 IP2Location/IP2Proxy 使用
 ./geoip -x data/IP2PROXY-LITE-PX12.BIN -l 0.0.0.0:1212
+
+# 传统 -auto 参数仍然支持
+./geoip -auto -f data/GeoLite2-Country.mmdb -x data/IP2PROXY-LITE-PX12.BIN -l 0.0.0.0:1212
 ```
 
 
@@ -152,8 +158,10 @@ between IPv4 and IPv6 lookup.
 * JSON output
 * Complete geolocation data: country, region, city, ASN, ISP information
 * **Multi-format database support**: MMDB, BIN, CSV formats
-* Support for both MaxMind GeoIP2 and IP2Location databases
-* **Auto-detection** of database formats for seamless integration
+* **Universal auto-detection**: All parameters support automatic format detection
+* **Smart fallback**: IP2Location data takes priority, falls back to MaxMind when needed
+* **Mixed database support**: Use MaxMind and IP2Location databases together seamlessly
+* **Parameter flexibility**: IP2Location databases can be used in any parameter position
 * IP2Location databases can completely replace MaxMind databases
 * Proxy detection using IP2Location IP2PROXY-LITE database
 * Support for multiple proxy types: VPN, TOR, PUB (Public Proxy), DCH (Data Center), WEB, SES, RES, CPN, EPN

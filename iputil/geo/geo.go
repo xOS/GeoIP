@@ -1,6 +1,7 @@
 package geo
 
 import (
+	"fmt"
 	"math"
 	"net"
 
@@ -76,57 +77,111 @@ func Open(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB
 }
 
 func OpenWithProxy(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB string, ip2proxyDB string) (Reader, error) {
+	return OpenWithAutoDetection(countryDB, cityDB, asnDB, ispDB, connectiontypeDB, ip2proxyDB)
+}
+
+func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB string, ip2proxyDB string) (Reader, error) {
+	var readers []Reader
+	var maxmindReader Reader
+	var ip2Reader Reader
+
+	// Process MaxMind databases
 	var country, city, asn, isp, connectiontype *geoip2.Reader
-	if countryDB != "" {
-		r, err := geoip2.Open(countryDB)
-		if err != nil {
-			return nil, err
-		}
-		country = r
-	}
-	if cityDB != "" {
-		r, err := geoip2.Open(cityDB)
-		if err != nil {
-			return nil, err
-		}
-		city = r
-	}
-	if asnDB != "" {
-		r, err := geoip2.Open(asnDB)
-		if err != nil {
-			return nil, err
-		}
-		asn = r
-	}
-	if ispDB != "" {
-		r, err := geoip2.Open(ispDB)
-		if err != nil {
-			return nil, err
-		}
-		isp = r
-	}
-	if connectiontypeDB != "" {
-		r, err := geoip2.Open(connectiontypeDB)
-		if err != nil {
-			return nil, err
-		}
-		connectiontype = r
-	}
-	geoipReader := &geoip{country: country, city: city, asn: asn, isp: isp, connectiontype: connectiontype}
 
-	// If no IP2Proxy database specified, return just the GeoIP reader
-	if ip2proxyDB == "" {
-		return geoipReader, nil
+	// Auto-detect and load each database
+	databases := map[string]*string{
+		"country":        &countryDB,
+		"city":           &cityDB,
+		"asn":            &asnDB,
+		"isp":            &ispDB,
+		"connectiontype": &connectiontypeDB,
 	}
 
-	// Create IP2Proxy reader with auto-detection
-	ip2proxyReader, err := CreateReader(ip2proxyDB)
-	if err != nil {
-		return nil, err
+	for dbType, dbPath := range databases {
+		if *dbPath == "" {
+			continue
+		}
+
+		// Detect if this is actually an IP2Location/IP2Proxy database
+		detectedType, err := DetectDatabaseType(*dbPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to detect database type for %s: %v", *dbPath, err)
+		}
+
+		switch detectedType {
+		case DatabaseTypeMaxMindMMDB:
+			// Handle MaxMind MMDB
+			r, err := geoip2.Open(*dbPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open MaxMind database %s: %v", *dbPath, err)
+			}
+			switch dbType {
+			case "country":
+				country = r
+			case "city":
+				city = r
+			case "asn":
+				asn = r
+			case "isp":
+				isp = r
+			case "connectiontype":
+				connectiontype = r
+			}
+
+		case DatabaseTypeIP2LocationBIN, DatabaseTypeIP2ProxyBIN, DatabaseTypeIP2ProxyCSV:
+			// Handle IP2Location/IP2Proxy databases
+			reader, err := CreateReader(*dbPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create IP2 reader for %s: %v", *dbPath, err)
+			}
+			if ip2Reader == nil {
+				ip2Reader = reader
+			} else {
+				// If we already have an IP2 reader, combine them
+				ip2Reader = NewCombinedReader(ip2Reader, reader)
+			}
+
+		default:
+			return nil, fmt.Errorf("unsupported database type for %s", *dbPath)
+		}
 	}
 
-	// Return combined reader
-	return NewCombinedReader(geoipReader, ip2proxyReader), nil
+	// Create MaxMind reader if we have any MaxMind databases
+	if country != nil || city != nil || asn != nil || isp != nil || connectiontype != nil {
+		maxmindReader = &geoip{country: country, city: city, asn: asn, isp: isp, connectiontype: connectiontype}
+		readers = append(readers, maxmindReader)
+	}
+
+	// Handle the explicit IP2Proxy database parameter
+	if ip2proxyDB != "" {
+		reader, err := CreateReader(ip2proxyDB)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create IP2Proxy reader: %v", err)
+		}
+		if ip2Reader == nil {
+			ip2Reader = reader
+		} else {
+			ip2Reader = NewCombinedReader(ip2Reader, reader)
+		}
+	}
+
+	// Add IP2 reader if we have one
+	if ip2Reader != nil {
+		readers = append(readers, ip2Reader)
+	}
+
+	// Return appropriate reader based on what we have
+	if len(readers) == 0 {
+		return &EmptyReader{}, nil
+	} else if len(readers) == 1 {
+		return readers[0], nil
+	} else {
+		// Combine all readers, with IP2 taking priority
+		if ip2Reader != nil && maxmindReader != nil {
+			return NewCombinedReader(maxmindReader, ip2Reader), nil
+		}
+		return readers[0], nil
+	}
 }
 
 func (g *geoip) Country(ip net.IP) (Country, error) {

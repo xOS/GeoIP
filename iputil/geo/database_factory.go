@@ -56,6 +56,24 @@ func DetectDatabaseType(path string) (DatabaseType, error) {
 		if strings.Contains(filename, "ip2proxy") || strings.Contains(filename, "proxy") {
 			return DatabaseTypeIP2ProxyBIN, nil
 		}
+		// Check for IP2Location patterns
+		if strings.Contains(filename, "ip2location") ||
+			strings.Contains(filename, "db1") || strings.Contains(filename, "db2") ||
+			strings.Contains(filename, "db3") || strings.Contains(filename, "db4") ||
+			strings.Contains(filename, "db5") || strings.Contains(filename, "db6") ||
+			strings.Contains(filename, "db7") || strings.Contains(filename, "db8") ||
+			strings.Contains(filename, "db9") || strings.Contains(filename, "db10") ||
+			strings.Contains(filename, "db11") || strings.Contains(filename, "db12") ||
+			strings.Contains(filename, "db13") || strings.Contains(filename, "db14") ||
+			strings.Contains(filename, "db15") || strings.Contains(filename, "db16") ||
+			strings.Contains(filename, "db17") || strings.Contains(filename, "db18") ||
+			strings.Contains(filename, "db19") || strings.Contains(filename, "db20") ||
+			strings.Contains(filename, "db21") || strings.Contains(filename, "db22") ||
+			strings.Contains(filename, "db23") || strings.Contains(filename, "db24") ||
+			strings.Contains(filename, "db25") || strings.Contains(filename, "db26") {
+			return DatabaseTypeIP2LocationBIN, nil
+		}
+		// Default to IP2Location for other BIN files
 		return DatabaseTypeIP2LocationBIN, nil
 	default:
 		// Try to detect by filename patterns
