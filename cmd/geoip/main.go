@@ -28,12 +28,19 @@ func init() {
 }
 
 func main() {
+	// Configuration file support
+	configFile := flag.String("config", "", "Path to configuration file (JSON format)")
+	generateConfig := flag.String("generate-config", "", "Generate example configuration file and exit")
+
+	// Command line flags (for backward compatibility)
 	countryFile := flag.String("f", "", "Path to GeoIP country database")
 	cityFile := flag.String("c", "", "Path to GeoIP city database")
 	asnFile := flag.String("a", "", "Path to GeoIP ASN database")
 	ispFile := flag.String("i", "", "Path to GeoIP ISP database")
 	connFile := flag.String("n", "", "Path to GeoIP2 Connection-Type database")
 	ip2proxyFile := flag.String("x", "", "Path to IP2Proxy database (CSV/BIN)")
+	qqwryFile := flag.String("q", "", "Path to qqwry database (.ipdb or .dat format)")
+	hybridMode := flag.Bool("hybrid", false, "Enable hybrid mode (use qqwry database for China mainland, MaxMind for others)")
 	autoDetect := flag.Bool("auto", false, "Auto-detect database formats")
 	listen := flag.String("l", ":1212", "Listening address")
 	reverseLookup := flag.Bool("r", true, "Perform reverse hostname lookups")
@@ -45,17 +52,65 @@ func main() {
 	var headers multiValueFlag
 	flag.Var(&headers, "H", "Header to trust for remote IP, if present (e.g. X-Real-IP)")
 	flag.Parse()
+
 	if len(flag.Args()) != 0 {
 		flag.Usage()
 		return
 	}
 
-	var r geo.Reader
-	var err error
+	// Handle config file generation
+	if *generateConfig != "" {
+		if err := generateExampleConfig(*generateConfig); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Example configuration generated: %s", *generateConfig)
+		return
+	}
 
-	if *autoDetect {
+	// Load configuration
+	config, err := LoadConfig(*configFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Override config with command line flags if provided
+	overrideConfigWithFlags(config, countryFile, cityFile, asnFile, ispFile, connFile,
+		ip2proxyFile, qqwryFile, hybridMode, autoDetect, listen, template,
+		reverseLookup, portLookup, cacheSize, profile, sponsor, headers)
+
+	// Validate configuration
+	if err := config.Validate(); err != nil {
+		log.Fatal(err)
+	}
+
+	var r geo.Reader
+
+	if config.HybridMode && config.Databases.QQWry != "" {
+		// Use hybrid mode: qqwry database for China mainland, MaxMind for others
+		r, err = geo.OpenWithHybridMode(
+			config.Databases.Country,
+			config.Databases.City,
+			config.Databases.ASN,
+			config.Databases.ISP,
+			config.Databases.ConnectionType,
+			config.Databases.IP2Proxy,
+			config.Databases.QQWry,
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Using hybrid mode: qqwry database for China mainland, MaxMind for others")
+	} else if config.AutoDetect {
 		// Auto-detect database formats
-		databases := []string{*countryFile, *cityFile, *asnFile, *ispFile, *connFile, *ip2proxyFile}
+		databases := []string{
+			config.Databases.Country,
+			config.Databases.City,
+			config.Databases.ASN,
+			config.Databases.ISP,
+			config.Databases.ConnectionType,
+			config.Databases.IP2Proxy,
+			config.Databases.QQWry,
+		}
 		r, err = geo.OpenAuto(databases...)
 		if err != nil {
 			log.Fatal(err)
@@ -63,42 +118,52 @@ func main() {
 		log.Println("Using auto-detection for database formats")
 	} else {
 		// Use traditional method
-		r, err = geo.OpenWithProxy(*countryFile, *cityFile, *asnFile, *ispFile, *connFile, *ip2proxyFile)
+		r, err = geo.OpenWithProxy(
+			config.Databases.Country,
+			config.Databases.City,
+			config.Databases.ASN,
+			config.Databases.ISP,
+			config.Databases.ConnectionType,
+			config.Databases.IP2Proxy,
+		)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
-	cache := http.NewCache(*cacheSize)
-	server := http.New(r, cache, *profile)
-	server.IPHeaders = headers
-	if _, err := os.Stat(*template); err == nil {
-		server.Template = *template
+
+	cache := http.NewCache(config.CacheSize)
+	server := http.New(r, cache, config.EnableProfiling)
+	server.IPHeaders = config.TrustedHeaders
+
+	if _, err := os.Stat(config.TemplateDir); err == nil {
+		server.Template = config.TemplateDir
 	} else {
-		log.Printf("Not configuring default handler: Template not found: %s", *template)
+		log.Printf("Not configuring default handler: Template not found: %s", config.TemplateDir)
 	}
-	if *reverseLookup {
+
+	if config.EnableReverseLookup {
 		log.Println("Enabling reverse lookup")
 		server.LookupAddr = iputil.LookupAddr
 	}
-	if *portLookup {
+	if config.EnablePortLookup {
 		log.Println("Enabling port lookup")
 		server.LookupPort = iputil.LookupPort
 	}
-	if *sponsor {
+	if config.ShowSponsorLogo {
 		log.Println("Enabling sponsor logo")
-		server.Sponsor = *sponsor
+		server.Sponsor = config.ShowSponsorLogo
 	}
-	if len(headers) > 0 {
-		log.Printf("Trusting remote IP from header(s): %s", headers.String())
+	if len(config.TrustedHeaders) > 0 {
+		log.Printf("Trusting remote IP from header(s): %s", strings.Join(config.TrustedHeaders, ", "))
 	}
-	if *cacheSize > 0 {
-		log.Printf("Cache capacity set to %d", *cacheSize)
+	if config.CacheSize > 0 {
+		log.Printf("Cache capacity set to %d", config.CacheSize)
 	}
-	if *profile {
+	if config.EnableProfiling {
 		log.Printf("Enabling profiling handlers")
 	}
-	log.Printf("Listening on http://%s", *listen)
-	if err := server.ListenAndServe(*listen); err != nil {
+	log.Printf("Listening on http://%s", config.ListenAddress)
+	if err := server.ListenAndServe(config.ListenAddress); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -1,0 +1,17 @@
+{
+  "listen_address": ":1212",
+  "template_dir": "../html",
+  "cache_size": 500,
+  "trusted_headers": [
+    "X-Real-IP"
+  ],
+  "enable_reverse_lookup": true,
+  "enable_port_lookup": true,
+  "show_sponsor_logo": true,
+  "enable_profiling": true,
+  "databases": {
+    "ip2proxy": "../data/IP2PROXY-LITE-PX12.BIN"
+  },
+  "hybrid_mode": false,
+  "auto_detect": false
+}

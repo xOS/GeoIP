@@ -84,6 +84,7 @@ func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string,
 	var readers []Reader
 	var maxmindReader Reader
 	var ip2Reader Reader
+	var qqwryReader Reader
 
 	// Process MaxMind databases
 	var country, city, asn, isp, connectiontype *geoip2.Reader
@@ -141,6 +142,14 @@ func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string,
 				ip2Reader = NewCombinedReader(ip2Reader, reader)
 			}
 
+		case DatabaseTypeQQWryIPDB, DatabaseTypeQQWryDAT:
+			// Handle qqwry.ipdb or qqwry.dat database
+			reader, err := CreateReader(*dbPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create qqwry reader for %s: %v", *dbPath, err)
+			}
+			qqwryReader = reader
+
 		default:
 			return nil, fmt.Errorf("unsupported database type for %s", *dbPath)
 		}
@@ -149,7 +158,6 @@ func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string,
 	// Create MaxMind reader if we have any MaxMind databases
 	if country != nil || city != nil || asn != nil || isp != nil || connectiontype != nil {
 		maxmindReader = &geoip{country: country, city: city, asn: asn, isp: isp, connectiontype: connectiontype}
-		readers = append(readers, maxmindReader)
 	}
 
 	// Handle the explicit IP2Proxy database parameter
@@ -165,7 +173,25 @@ func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string,
 		}
 	}
 
-	// Add IP2 reader if we have one
+	// Create hybrid reader if we have both MaxMind and qqwry
+	if maxmindReader != nil && qqwryReader != nil {
+		hybridReader := NewHybridReader(maxmindReader, qqwryReader)
+
+		// If we also have IP2 databases, combine with hybrid
+		if ip2Reader != nil {
+			return NewCombinedReader(hybridReader, ip2Reader), nil
+		}
+
+		return hybridReader, nil
+	}
+
+	// Add readers to the list
+	if maxmindReader != nil {
+		readers = append(readers, maxmindReader)
+	}
+	if qqwryReader != nil {
+		readers = append(readers, qqwryReader)
+	}
 	if ip2Reader != nil {
 		readers = append(readers, ip2Reader)
 	}
@@ -179,6 +205,155 @@ func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string,
 		// Combine all readers, with IP2 taking priority
 		if ip2Reader != nil && maxmindReader != nil {
 			return NewCombinedReader(maxmindReader, ip2Reader), nil
+		}
+		return readers[0], nil
+	}
+}
+
+func OpenWithHybridMode(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB string, ip2proxyDB string, qqwryDB string) (Reader, error) {
+	var readers []Reader
+	var maxmindReader Reader
+	var ip2Reader Reader
+	var qqwryReader Reader
+
+	// Process MaxMind databases
+	var country, city, asn, isp, connectiontype *geoip2.Reader
+
+	// Auto-detect and load each database
+	databases := map[string]*string{
+		"country":        &countryDB,
+		"city":           &cityDB,
+		"asn":            &asnDB,
+		"isp":            &ispDB,
+		"connectiontype": &connectiontypeDB,
+	}
+
+	for dbType, dbPath := range databases {
+		if *dbPath == "" {
+			continue
+		}
+
+		// Detect if this is actually an IP2Location/IP2Proxy database
+		detectedType, err := DetectDatabaseType(*dbPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to detect database type for %s: %v", *dbPath, err)
+		}
+
+		switch detectedType {
+		case DatabaseTypeMaxMindMMDB:
+			// Handle MaxMind MMDB
+			r, err := geoip2.Open(*dbPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open MaxMind database %s: %v", *dbPath, err)
+			}
+			switch dbType {
+			case "country":
+				country = r
+			case "city":
+				city = r
+			case "asn":
+				asn = r
+			case "isp":
+				isp = r
+			case "connectiontype":
+				connectiontype = r
+			}
+
+		case DatabaseTypeIP2LocationBIN, DatabaseTypeIP2ProxyBIN, DatabaseTypeIP2ProxyCSV:
+			// Handle IP2Location/IP2Proxy databases
+			reader, err := CreateReader(*dbPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create IP2 reader for %s: %v", *dbPath, err)
+			}
+			if ip2Reader == nil {
+				ip2Reader = reader
+			} else {
+				// If we already have an IP2 reader, combine them
+				ip2Reader = NewCombinedReader(ip2Reader, reader)
+			}
+
+		case DatabaseTypeQQWryIPDB, DatabaseTypeQQWryDAT:
+			// Handle qqwry.ipdb or qqwry.dat database
+			reader, err := CreateReader(*dbPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create qqwry reader for %s: %v", *dbPath, err)
+			}
+			qqwryReader = reader
+
+		default:
+			return nil, fmt.Errorf("unsupported database type for %s", *dbPath)
+		}
+	}
+
+	// Create MaxMind reader if we have any MaxMind databases
+	if country != nil || city != nil || asn != nil || isp != nil || connectiontype != nil {
+		maxmindReader = &geoip{country: country, city: city, asn: asn, isp: isp, connectiontype: connectiontype}
+	}
+
+	// Handle the explicit IP2Proxy database parameter
+	if ip2proxyDB != "" {
+		reader, err := CreateReader(ip2proxyDB)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create IP2Proxy reader: %v", err)
+		}
+		if ip2Reader == nil {
+			ip2Reader = reader
+		} else {
+			ip2Reader = NewCombinedReader(ip2Reader, reader)
+		}
+	}
+
+	// Handle the explicit qqwry database parameter (supports both .ipdb and .dat)
+	if qqwryDB != "" {
+		reader, err := CreateReader(qqwryDB)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create qqwry reader: %v", err)
+		}
+		qqwryReader = reader
+	}
+
+	// Create hybrid reader if we have both MaxMind and qqwry
+	if maxmindReader != nil && qqwryReader != nil {
+		hybridReader := NewHybridReader(maxmindReader, qqwryReader)
+
+		// If we also have IP2 databases, combine with hybrid
+		if ip2Reader != nil {
+			return NewCombinedReader(hybridReader, ip2Reader), nil
+		}
+
+		return hybridReader, nil
+	}
+
+	// Add readers in priority order
+	if maxmindReader != nil {
+		readers = append(readers, maxmindReader)
+	}
+	if qqwryReader != nil {
+		readers = append(readers, qqwryReader)
+	}
+	if ip2Reader != nil {
+		readers = append(readers, ip2Reader)
+	}
+
+	// Return appropriate reader based on what we have
+	if len(readers) == 0 {
+		return &EmptyReader{}, nil
+	} else if len(readers) == 1 {
+		return readers[0], nil
+	} else {
+		// Combine all readers, with IP2 taking priority
+		if ip2Reader != nil && len(readers) > 1 {
+			// Find the non-IP2 reader
+			var otherReader Reader
+			for _, r := range readers {
+				if r != ip2Reader {
+					otherReader = r
+					break
+				}
+			}
+			if otherReader != nil {
+				return NewCombinedReader(otherReader, ip2Reader), nil
+			}
 		}
 		return readers[0], nil
 	}

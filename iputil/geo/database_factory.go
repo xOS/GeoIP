@@ -17,6 +17,8 @@ const (
 	DatabaseTypeIP2LocationBIN
 	DatabaseTypeIP2ProxyBIN
 	DatabaseTypeIP2ProxyCSV
+	DatabaseTypeQQWryIPDB
+	DatabaseTypeQQWryDAT
 )
 
 // DatabaseInfo contains information about a database file
@@ -45,6 +47,18 @@ func DetectDatabaseType(path string) (DatabaseType, error) {
 	switch ext {
 	case ".mmdb":
 		return DatabaseTypeMaxMindMMDB, nil
+	case ".ipdb":
+		// Check if it's qqwry.ipdb format
+		if strings.Contains(filename, "qqwry") || strings.Contains(filename, "ipdb") {
+			return DatabaseTypeQQWryIPDB, nil
+		}
+		return DatabaseTypeQQWryIPDB, nil // Default to qqwry for .ipdb files
+	case ".dat":
+		// Check if it's qqwry.dat format
+		if strings.Contains(filename, "qqwry") {
+			return DatabaseTypeQQWryDAT, nil
+		}
+		return DatabaseTypeQQWryDAT, nil // Default to qqwry for .dat files
 	case ".csv":
 		// Check if it's IP2Proxy CSV
 		if strings.Contains(filename, "ip2proxy") || strings.Contains(filename, "proxy") {
@@ -115,6 +129,10 @@ func CreateReader(path string) (Reader, error) {
 		return NewIP2ProxyBinReader(path)
 	case DatabaseTypeIP2ProxyCSV:
 		return NewIP2ProxyReader(path)
+	case DatabaseTypeQQWryIPDB:
+		return NewQQWryIPDBReader(path)
+	case DatabaseTypeQQWryDAT:
+		return NewQQWryDatReader(path)
 	default:
 		return nil, fmt.Errorf("unsupported database type for file: %s", path)
 	}
@@ -207,6 +225,9 @@ func GetDatabaseInfo(path string) (*DatabaseInfo, error) {
 	case DatabaseTypeMaxMindMMDB:
 		info.IsProxy = false
 		info.Provider = "MaxMind"
+	case DatabaseTypeQQWryIPDB:
+		info.IsProxy = false
+		info.Provider = "IPIP.net"
 	}
 
 	return info, nil
