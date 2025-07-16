@@ -1,9 +1,10 @@
 name: Release GeoIP
 
 on:
+  # workflow_dispatch:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   goreleaser:
