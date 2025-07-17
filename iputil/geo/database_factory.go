@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tagphi/czdb-search-golang/pkg/db"
 )
 
 // DatabaseType represents the type of database
@@ -19,6 +21,7 @@ const (
 	DatabaseTypeIP2ProxyCSV
 	DatabaseTypeQQWryIPDB
 	DatabaseTypeQQWryDAT
+	DatabaseTypeCZDB // 新增 czdb 类型
 )
 
 // DatabaseInfo contains information about a database file
@@ -47,6 +50,8 @@ func DetectDatabaseType(path string) (DatabaseType, error) {
 	switch ext {
 	case ".mmdb":
 		return DatabaseTypeMaxMindMMDB, nil
+	case ".czdb":
+		return DatabaseTypeCZDB, nil // 新增 czdb 检测
 	case ".ipdb":
 		// Check if it's qqwry.ipdb format
 		if strings.Contains(filename, "qqwry") || strings.Contains(filename, "ipdb") {
@@ -108,7 +113,7 @@ func DetectDatabaseType(path string) (DatabaseType, error) {
 }
 
 // CreateReader creates a Reader based on the database type
-func CreateReader(path string) (Reader, error) {
+func CreateReader(path string, czdbKey ...string) (Reader, error) {
 	if path == "" {
 		return &EmptyReader{}, nil
 	}
@@ -133,6 +138,19 @@ func CreateReader(path string) (Reader, error) {
 		return NewQQWryIPDBReader(path)
 	case DatabaseTypeQQWryDAT:
 		return NewQQWryDatReader(path)
+	case DatabaseTypeCZDB:
+		key := ""
+		if len(czdbKey) > 0 {
+			key = czdbKey[0]
+		}
+		if key == "" {
+			return nil, fmt.Errorf("czdb key required for file: %s (key is empty)", path)
+		}
+		reader, err := NewCZDBReader(path, key, db.MEMORY)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open czdb: %s, key: %q, error: %v", path, key, err)
+		}
+		return reader, nil
 	default:
 		return nil, fmt.Errorf("unsupported database type for file: %s", path)
 	}
@@ -166,6 +184,7 @@ func OpenAuto(databases ...string) (Reader, error) {
 			continue
 		}
 
+		// 兼容 czdb 密钥参数（此处可后续扩展为结构体/配置）
 		reader, err := CreateReader(dbPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create reader for %s: %v", dbPath, err)
@@ -231,4 +250,17 @@ func GetDatabaseInfo(path string) (*DatabaseInfo, error) {
 	}
 
 	return info, nil
+}
+
+func openDatabaseWithDebug(path string, openFunc func(string) (interface{}, error), label string) (interface{}, error) {
+	_, _ = filepath.Abs(path)
+	_, err := os.Stat(path)
+	if err != nil {
+	} else {
+	}
+	db, err := openFunc(path)
+	if err != nil {
+	} else {
+	}
+	return db, err
 }

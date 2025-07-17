@@ -5,198 +5,314 @@ import (
 	"strings"
 )
 
-// HybridReader combines MaxMind and qqwry.ipdb databases
-// Uses qqwry.ipdb for China mainland IPs and MaxMind for others
+// HybridReader combines MaxMind, czdb v4/v6, and qqwry.ipdb databases
+// Uses czdb for China mainland IPs (v4/v6), fallback to qqwry, MaxMind for others
+// czdbV4: 纯真 czdb v4，czdbV6: 纯真 czdb v6
+// qqwry: 旧版纯真，maxmind: MaxMind
 type HybridReader struct {
 	maxmind Reader
+	czdbV4  Reader
+	czdbV6  Reader
 	qqwry   Reader
 }
 
-// NewHybridReader creates a new hybrid reader
-func NewHybridReader(maxmindReader Reader, qqwryReader Reader) Reader {
+// NewHybridReader creates a new hybrid reader supporting czdb v4/v6
+func NewHybridReader(maxmindReader, czdbV4Reader, czdbV6Reader, qqwryReader Reader) Reader {
 	return &HybridReader{
 		maxmind: maxmindReader,
+		czdbV4:  czdbV4Reader,
+		czdbV6:  czdbV6Reader,
 		qqwry:   qqwryReader,
 	}
 }
 
-// selectReader determines which reader to use based on IP location
+// selectReader determines which reader to use based on IP location and version
 func (h *HybridReader) selectReader(ip net.IP) Reader {
-	// First check with MaxMind to determine if it's China mainland
-	if h.maxmind != nil {
-		country, err := h.maxmind.Country(ip)
-		if err == nil && strings.ToUpper(country.ISO) == "CN" {
-			// Use qqwry for China mainland
-			if h.qqwry != nil {
-				return h.qqwry
-			}
-		}
+	if isChinaIPv4(ip) && h.czdbV4 != nil {
+		return h.czdbV4
 	}
-
-	// Use MaxMind for non-China IPs or fallback
+	if isChinaIPv6(ip) && h.czdbV6 != nil {
+		return h.czdbV6
+	}
+	if h.qqwry != nil && h.isChinaMainlandIP(ip) {
+		return h.qqwry
+	}
 	if h.maxmind != nil {
 		return h.maxmind
 	}
-
-	// Final fallback to qqwry if MaxMind is not available
-	return h.qqwry
+	return nil
 }
 
-// Country returns country information, preferring qqwry for China IPs
-func (h *HybridReader) Country(ip net.IP) (Country, error) {
-	isChinaIP := h.isChinaMainlandIP(ip)
-
-	if isChinaIP && h.qqwry != nil {
-		// For China IPs, prefer qqwry (Chinese names)
-		country, err := h.qqwry.Country(ip)
-		if err == nil && country.ISO != "" {
-			// If qqwry doesn't have IsEU info, get it from MaxMind
-			if country.IsEU == nil && h.maxmind != nil {
-				maxmindCountry, maxmindErr := h.maxmind.Country(ip)
-				if maxmindErr == nil {
-					country.IsEU = maxmindCountry.IsEU
-				}
-			}
-			return country, nil
+// mergeCountry 合并多个 Country 结构体，优先第一个非空字段
+func mergeCountry(cs ...Country) Country {
+	var out Country
+	for _, c := range cs {
+		if out.Name == "" && c.Name != "" {
+			out.Name = c.Name
+		}
+		if out.ISO == "" && c.ISO != "" {
+			out.ISO = c.ISO
+		}
+		if out.IsEU == nil && c.IsEU != nil {
+			out.IsEU = c.IsEU
 		}
 	}
+	return out
+}
 
-	// Use MaxMind for non-China IPs or fallback
-	if h.maxmind != nil {
+func mergeCity(cs ...City) City {
+	var out City
+	for _, c := range cs {
+		if out.Name == "" && c.Name != "" {
+			out.Name = c.Name
+		}
+		if out.RegionName == "" && c.RegionName != "" {
+			out.RegionName = c.RegionName
+		}
+		if out.RegionCode == "" && c.RegionCode != "" {
+			out.RegionCode = c.RegionCode
+		}
+		if out.Latitude == 0 && c.Latitude != 0 {
+			out.Latitude = c.Latitude
+		}
+		if out.Longitude == 0 && c.Longitude != 0 {
+			out.Longitude = c.Longitude
+		}
+		if out.Timezone == "" && c.Timezone != "" {
+			out.Timezone = c.Timezone
+		}
+		if out.PostalCode == "" && c.PostalCode != "" {
+			out.PostalCode = c.PostalCode
+		}
+		if out.MetroCode == 0 && c.MetroCode != 0 {
+			out.MetroCode = c.MetroCode
+		}
+	}
+	return out
+}
+
+func mergeISP(isps ...ISP) ISP {
+	var out ISP
+	for _, i := range isps {
+		if out.ISP == "" && i.ISP != "" {
+			out.ISP = i.ISP
+		}
+		if out.Organization == "" && i.Organization != "" {
+			out.Organization = i.Organization
+		}
+		if out.ASN == 0 && i.ASN > 0 {
+			out.ASN = i.ASN
+		}
+		if out.ORG == "" && i.ORG != "" {
+			out.ORG = i.ORG
+		}
+	}
+	return out
+}
+
+func mergeASN(asns ...ASN) ASN {
+	var out ASN
+	for _, a := range asns {
+		if out.AutonomousSystemNumber == 0 && a.AutonomousSystemNumber > 0 {
+			out.AutonomousSystemNumber = a.AutonomousSystemNumber
+		}
+		if out.AutonomousSystemOrganization == "" && a.AutonomousSystemOrganization != "" {
+			out.AutonomousSystemOrganization = a.AutonomousSystemOrganization
+		}
+	}
+	return out
+}
+
+// mergeCountryWithPriority: 主优先，次补全
+func mergeCountryWithPriority(primary Country, supplements ...Country) Country {
+	out := primary
+	for _, c := range supplements {
+		if out.Name == "" && c.Name != "" {
+			out.Name = c.Name
+		}
+		if out.ISO == "" && c.ISO != "" {
+			out.ISO = c.ISO
+		}
+		if out.IsEU == nil && c.IsEU != nil {
+			out.IsEU = c.IsEU
+		}
+	}
+	return out
+}
+
+func mergeCityWithPriority(primary City, supplements ...City) City {
+	out := primary
+	for _, c := range supplements {
+		if out.Name == "" && c.Name != "" {
+			out.Name = c.Name
+		}
+		if out.RegionName == "" && c.RegionName != "" {
+			out.RegionName = c.RegionName
+		}
+		if out.RegionCode == "" && c.RegionCode != "" {
+			out.RegionCode = c.RegionCode
+		}
+		if out.Latitude == 0 && c.Latitude != 0 {
+			out.Latitude = c.Latitude
+		}
+		if out.Longitude == 0 && c.Longitude != 0 {
+			out.Longitude = c.Longitude
+		}
+		if out.Timezone == "" && c.Timezone != "" {
+			out.Timezone = c.Timezone
+		}
+		if out.PostalCode == "" && c.PostalCode != "" {
+			out.PostalCode = c.PostalCode
+		}
+		if out.MetroCode == 0 && c.MetroCode != 0 {
+			out.MetroCode = c.MetroCode
+		}
+	}
+	return out
+}
+
+func mergeISPWithPriority(primary ISP, supplements ...ISP) ISP {
+	out := primary
+	for _, i := range supplements {
+		if out.ISP == "" && i.ISP != "" {
+			out.ISP = i.ISP
+		}
+		if out.Organization == "" && i.Organization != "" {
+			out.Organization = i.Organization
+		}
+		if out.ASN == 0 && i.ASN > 0 {
+			out.ASN = i.ASN
+		}
+		if out.ORG == "" && i.ORG != "" {
+			out.ORG = i.ORG
+		}
+	}
+	return out
+}
+
+func mergeASNWithPriority(primary ASN, supplements ...ASN) ASN {
+	out := primary
+	for _, a := range supplements {
+		if out.AutonomousSystemNumber == 0 && a.AutonomousSystemNumber > 0 {
+			out.AutonomousSystemNumber = a.AutonomousSystemNumber
+		}
+		if out.AutonomousSystemOrganization == "" && a.AutonomousSystemOrganization != "" {
+			out.AutonomousSystemOrganization = a.AutonomousSystemOrganization
+		}
+	}
+	return out
+}
+
+// Country returns merged country information from all sources
+func (h *HybridReader) Country(ip net.IP) (Country, error) {
+	if h.maxmind == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil {
+		return Country{}, nil
+	}
+	if h.maxmind != nil && !h.isChinaMainlandIP(ip) {
+		// 非中国大陆 IP 以 MaxMind 为主
 		return h.maxmind.Country(ip)
 	}
-
-	// Final fallback to qqwry
-	if h.qqwry != nil {
-		return h.qqwry.Country(ip)
+	// 中国大陆 IP 优先 czdb/qqwry，缺失字段用其它库补全
+	var main Country
+	var c1, c2, c3 Country
+	if isChinaIPv4(ip) && h.czdbV4 != nil {
+		main, _ = h.czdbV4.Country(ip)
+	} else if isChinaIPv6(ip) && h.czdbV6 != nil {
+		main, _ = h.czdbV6.Country(ip)
+	} else if h.qqwry != nil {
+		main, _ = h.qqwry.Country(ip)
 	}
-
-	return Country{}, nil
-}
-
-// City returns city information, combining data from both sources
-func (h *HybridReader) City(ip net.IP) (City, error) {
-	isChinaIP := h.isChinaMainlandIP(ip)
-
-	var primaryCity, fallbackCity City
-	var primaryErr, fallbackErr error
-
-	if isChinaIP && h.qqwry != nil {
-		// For China IPs, prefer qqwry for Chinese names
-		primaryCity, primaryErr = h.qqwry.City(ip)
-		if h.maxmind != nil {
-			fallbackCity, fallbackErr = h.maxmind.City(ip)
-		}
-	} else if h.maxmind != nil {
-		// For non-China IPs, prefer MaxMind
-		primaryCity, primaryErr = h.maxmind.City(ip)
-		if h.qqwry != nil {
-			fallbackCity, fallbackErr = h.qqwry.City(ip)
-		}
-	}
-
-	// Combine the best data from both sources
-	result := City{}
-
-	if primaryErr == nil {
-		result = primaryCity
-	}
-
-	// Fill missing data from fallback, especially coordinates and timezone
-	if fallbackErr == nil {
-		if result.Name == "" && fallbackCity.Name != "" {
-			result.Name = fallbackCity.Name
-		}
-		if result.RegionName == "" && fallbackCity.RegionName != "" {
-			result.RegionName = fallbackCity.RegionName
-		}
-		if result.RegionCode == "" && fallbackCity.RegionCode != "" {
-			result.RegionCode = fallbackCity.RegionCode
-		}
-		if result.Latitude == 0 && fallbackCity.Latitude != 0 {
-			result.Latitude = fallbackCity.Latitude
-		}
-		if result.Longitude == 0 && fallbackCity.Longitude != 0 {
-			result.Longitude = fallbackCity.Longitude
-		}
-		if result.Timezone == "" && fallbackCity.Timezone != "" {
-			result.Timezone = fallbackCity.Timezone
-		}
-		if result.PostalCode == "" && fallbackCity.PostalCode != "" {
-			result.PostalCode = fallbackCity.PostalCode
-		}
-		if result.MetroCode == 0 && fallbackCity.MetroCode != 0 {
-			result.MetroCode = fallbackCity.MetroCode
-		}
-	}
-
-	return result, nil
-}
-
-// ASN returns ASN information, preferring MaxMind for comprehensive data
-func (h *HybridReader) ASN(ip net.IP) (ASN, error) {
-	// For ASN, always try MaxMind first as it has comprehensive ASN data
 	if h.maxmind != nil {
-		asn, err := h.maxmind.ASN(ip)
-		if err == nil && asn.AutonomousSystemNumber > 0 {
-			return asn, nil
-		}
+		c1, _ = h.maxmind.Country(ip)
 	}
-
-	// Fallback to selected reader
-	reader := h.selectReader(ip)
-	if reader != nil {
-		return reader.ASN(ip)
+	if h.qqwry != nil {
+		c2, _ = h.qqwry.Country(ip)
 	}
-	return ASN{}, nil
+	return mergeCountryWithPriority(main, c1, c2, c3), nil
 }
 
-// ISP returns ISP information, combining data from both sources
+// City returns merged city information from all sources
+func (h *HybridReader) City(ip net.IP) (City, error) {
+	if h.maxmind == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil {
+		return City{}, nil
+	}
+	if h.maxmind != nil && !h.isChinaMainlandIP(ip) {
+		return h.maxmind.City(ip)
+	}
+	// 中国大陆 IP 优先 czdb/qqwry，缺失字段用其它库补全
+	var main City
+	var c1, c2, c3 City
+	if isChinaIPv4(ip) && h.czdbV4 != nil {
+		main, _ = h.czdbV4.City(ip)
+	} else if isChinaIPv6(ip) && h.czdbV6 != nil {
+		main, _ = h.czdbV6.City(ip)
+	} else if h.qqwry != nil {
+		main, _ = h.qqwry.City(ip)
+	}
+	if h.maxmind != nil {
+		c1, _ = h.maxmind.City(ip)
+	}
+	if h.qqwry != nil {
+		c2, _ = h.qqwry.City(ip)
+	}
+	return mergeCityWithPriority(main, c1, c2, c3), nil
+}
+
+// ASN returns merged ASN information from all sources
+func (h *HybridReader) ASN(ip net.IP) (ASN, error) {
+	if h.maxmind == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil {
+		return ASN{}, nil
+	}
+	if h.maxmind != nil && !h.isChinaMainlandIP(ip) {
+		main, _ := h.maxmind.ASN(ip)
+		a1, _ := h.czdbV4.ASN(ip)
+		a2, _ := h.czdbV6.ASN(ip)
+		a3, _ := h.qqwry.ASN(ip)
+		return mergeASNWithPriority(main, a1, a2, a3), nil
+	}
+	var main ASN
+	var a1, a2, a3 ASN
+	if isChinaIPv4(ip) && h.czdbV4 != nil {
+		main, _ = h.czdbV4.ASN(ip)
+	} else if isChinaIPv6(ip) && h.czdbV6 != nil {
+		main, _ = h.czdbV6.ASN(ip)
+	} else if h.qqwry != nil {
+		main, _ = h.qqwry.ASN(ip)
+	}
+	if h.maxmind != nil {
+		a1, _ = h.maxmind.ASN(ip)
+	}
+	if h.qqwry != nil {
+		a2, _ = h.qqwry.ASN(ip)
+	}
+	return mergeASNWithPriority(main, a1, a2, a3), nil
+}
+
+// ISP returns merged ISP information from all sources
 func (h *HybridReader) ISP(ip net.IP) (ISP, error) {
-	// Check if it's China mainland to decide primary source
-	isChinaIP := h.isChinaMainlandIP(ip)
-
-	var primaryISP, fallbackISP ISP
-	var primaryErr, fallbackErr error
-
-	if isChinaIP && h.qqwry != nil {
-		// For China IPs, prefer qqwry for ISP name but get ASN from MaxMind
-		primaryISP, primaryErr = h.qqwry.ISP(ip)
-		if h.maxmind != nil {
-			fallbackISP, fallbackErr = h.maxmind.ISP(ip)
-		}
-	} else if h.maxmind != nil {
-		// For non-China IPs, prefer MaxMind
-		primaryISP, primaryErr = h.maxmind.ISP(ip)
-		if h.qqwry != nil {
-			fallbackISP, fallbackErr = h.qqwry.ISP(ip)
-		}
+	if h.maxmind == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil {
+		return ISP{}, nil
 	}
-
-	// Combine the best data from both sources
-	result := ISP{}
-
-	if primaryErr == nil {
-		result = primaryISP
+	if h.maxmind != nil && !h.isChinaMainlandIP(ip) {
+		return h.maxmind.ISP(ip)
 	}
-
-	// Fill missing data from fallback
-	if fallbackErr == nil {
-		if result.ISP == "" && fallbackISP.ISP != "" {
-			result.ISP = fallbackISP.ISP
-		}
-		if result.Organization == "" && fallbackISP.Organization != "" {
-			result.Organization = fallbackISP.Organization
-		}
-		if result.ASN == 0 && fallbackISP.ASN > 0 {
-			result.ASN = fallbackISP.ASN
-		}
-		if result.ORG == "" && fallbackISP.ORG != "" {
-			result.ORG = fallbackISP.ORG
-		}
+	// 中国大陆 IP 优先 czdb/qqwry，缺失字段用其它库补全
+	var main ISP
+	var i1, i2, i3 ISP
+	if isChinaIPv4(ip) && h.czdbV4 != nil {
+		main, _ = h.czdbV4.ISP(ip)
+	} else if isChinaIPv6(ip) && h.czdbV6 != nil {
+		main, _ = h.czdbV6.ISP(ip)
+	} else if h.qqwry != nil {
+		main, _ = h.qqwry.ISP(ip)
 	}
-
-	return result, nil
+	if h.maxmind != nil {
+		i1, _ = h.maxmind.ISP(ip)
+	}
+	if h.qqwry != nil {
+		i2, _ = h.qqwry.ISP(ip)
+	}
+	return mergeISPWithPriority(main, i1, i2, i3), nil
 }
 
 // ConnectionType returns connection type, preferring MaxMind data
@@ -235,6 +351,14 @@ func (h *HybridReader) isChinaMainlandIP(ip net.IP) bool {
 		}
 	}
 	return false
+}
+
+// isChinaIPv4/IPv6 判断 IP 是否为中国大陆（仅根据 czdb 是否可查）
+func isChinaIPv4(ip net.IP) bool {
+	return ip.To4() != nil
+}
+func isChinaIPv6(ip net.IP) bool {
+	return ip.To16() != nil && ip.To4() == nil
 }
 
 // IsEmpty returns true if both readers are empty

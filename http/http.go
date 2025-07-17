@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	jsonMediaType = "application/json"
+	jsonMediaType = "application/json; charset=utf-8"
 	textMediaType = "text/plain"
 )
 
@@ -47,6 +47,7 @@ type Response struct {
 	MetroCode      uint     `json:"metro_code,omitempty"`
 	PostalCode     string   `json:"zip_code,omitempty"`
 	City           string   `json:"city,omitempty"`
+	Street         string   `json:"street,omitempty"`
 	Latitude       float64  `json:"latitude,omitempty"`
 	Longitude      float64  `json:"longitude,omitempty"`
 	Timezone       string   `json:"time_zone,omitempty"`
@@ -197,6 +198,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		MetroCode:      city.MetroCode,
 		PostalCode:     city.PostalCode,
 		City:           city.Name,
+		Street:         city.Street,
 		Latitude:       city.Latitude,
 		Longitude:      city.Longitude,
 		Timezone:       city.Timezone,
@@ -216,10 +218,9 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		Provider:       provider,
 		FraudScore:     fraudScore,
 		Hostname:       hostname,
-		UserAgent:      response.UserAgent,
+		UserAgent:      userAgentFromRequest(r),
 	}
 	s.cache.Set(ip, response)
-	response.UserAgent = userAgentFromRequest(r)
 	return response, nil
 }
 
