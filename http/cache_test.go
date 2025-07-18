@@ -85,3 +85,40 @@ func TestCacheResize(t *testing.T) {
 		t.Errorf("want %d entries, got %d", want, got)
 	}
 }
+
+func TestCacheWithLang(t *testing.T) {
+	c := NewCache(10)
+	ip := net.ParseIP("192.0.2.1")
+
+	// Test different lang parameters create different cache entries
+	responseZh := Response{IP: ip, Country: "中国"}
+	responseEn := Response{IP: ip, Country: "China"}
+	responseDefault := Response{IP: ip, Country: "Default"}
+
+	c.SetWithLang(ip, "zh", responseZh)
+	c.SetWithLang(ip, "en", responseEn)
+	c.SetWithLang(ip, "", responseDefault)
+
+	// Should have 3 different cache entries
+	if got, want := len(c.entries), 3; got != want {
+		t.Errorf("want %d entries, got %d", want, got)
+	}
+
+	// Test retrieval
+	if resp, ok := c.GetWithLang(ip, "zh"); !ok || resp.Country != "中国" {
+		t.Errorf("GetWithLang(ip, 'zh') = (%v, %t), want (Response{Country: '中国'}, true)", resp, ok)
+	}
+
+	if resp, ok := c.GetWithLang(ip, "en"); !ok || resp.Country != "China" {
+		t.Errorf("GetWithLang(ip, 'en') = (%v, %t), want (Response{Country: 'China'}, true)", resp, ok)
+	}
+
+	if resp, ok := c.GetWithLang(ip, ""); !ok || resp.Country != "Default" {
+		t.Errorf("GetWithLang(ip, '') = (%v, %t), want (Response{Country: 'Default'}, true)", resp, ok)
+	}
+
+	// Test backward compatibility
+	if resp, ok := c.Get(ip); !ok || resp.Country != "Default" {
+		t.Errorf("Get(ip) = (%v, %t), want (Response{Country: 'Default'}, true)", resp, ok)
+	}
+}

@@ -16,6 +16,12 @@ type HybridReader struct {
 	qqwry   Reader
 }
 
+// Getter methods for http layer lang override
+func (h *HybridReader) GetMaxmind() Reader { return h.maxmind }
+func (h *HybridReader) GetCzdbV4() Reader  { return h.czdbV4 }
+func (h *HybridReader) GetCzdbV6() Reader  { return h.czdbV6 }
+func (h *HybridReader) GetQQWry() Reader   { return h.qqwry }
+
 // NewHybridReader creates a new hybrid reader supporting czdb v4/v6
 func NewHybridReader(maxmindReader, czdbV4Reader, czdbV6Reader, qqwryReader Reader) Reader {
 	return &HybridReader{

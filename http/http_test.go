@@ -55,8 +55,120 @@ func (t *testDb) Proxy(net.IP) (geo.Proxy, error) {
 
 func (t *testDb) IsEmpty() bool { return false }
 
+// testHybridDb implements the interface needed for lang parameter testing
+type testHybridDb struct {
+	maxmind geo.Reader
+	czdbV4  geo.Reader
+	czdbV6  geo.Reader
+	qqwry   geo.Reader
+}
+
+func (h *testHybridDb) GetMaxmind() geo.Reader { return h.maxmind }
+func (h *testHybridDb) GetCzdbV4() geo.Reader  { return h.czdbV4 }
+func (h *testHybridDb) GetCzdbV6() geo.Reader  { return h.czdbV6 }
+func (h *testHybridDb) GetQQWry() geo.Reader   { return h.qqwry }
+
+func (h *testHybridDb) Country(net.IP) (geo.Country, error) {
+	return geo.Country{Name: "Default", ISO: "XX"}, nil
+}
+
+func (h *testHybridDb) City(net.IP) (geo.City, error) {
+	return geo.City{Name: "Default City"}, nil
+}
+
+func (h *testHybridDb) ASN(net.IP) (geo.ASN, error) {
+	return geo.ASN{AutonomousSystemNumber: 0}, nil
+}
+
+func (h *testHybridDb) ISP(net.IP) (geo.ISP, error) {
+	return geo.ISP{ISP: "Default ISP"}, nil
+}
+
+func (h *testHybridDb) ConnectionType(net.IP) (geo.ConnectionType, error) {
+	return geo.ConnectionType{ConnectionType: "Default"}, nil
+}
+
+func (h *testHybridDb) Proxy(net.IP) (geo.Proxy, error) {
+	return geo.Proxy{IsProxy: false}, nil
+}
+
+func (h *testHybridDb) IsEmpty() bool {
+	return false
+}
+
+// Mock readers for different databases
+type maxmindDb struct{}
+
+func (m *maxmindDb) Country(net.IP) (geo.Country, error) {
+	return geo.Country{Name: "United States", ISO: "US"}, nil
+}
+
+func (m *maxmindDb) City(net.IP) (geo.City, error) {
+	return geo.City{Name: "New York"}, nil
+}
+
+func (m *maxmindDb) ASN(net.IP) (geo.ASN, error) {
+	return geo.ASN{AutonomousSystemNumber: 12345}, nil
+}
+
+func (m *maxmindDb) ISP(net.IP) (geo.ISP, error) {
+	return geo.ISP{ISP: "MaxMind ISP"}, nil
+}
+
+func (m *maxmindDb) ConnectionType(net.IP) (geo.ConnectionType, error) {
+	return geo.ConnectionType{ConnectionType: "Cable/DSL"}, nil
+}
+
+func (m *maxmindDb) Proxy(net.IP) (geo.Proxy, error) {
+	return geo.Proxy{IsProxy: false}, nil
+}
+
+func (m *maxmindDb) IsEmpty() bool {
+	return false
+}
+
+type czdbDb struct{}
+
+func (c *czdbDb) Country(net.IP) (geo.Country, error) {
+	return geo.Country{Name: "中国", ISO: "CN"}, nil
+}
+
+func (c *czdbDb) City(net.IP) (geo.City, error) {
+	return geo.City{Name: "北京"}, nil
+}
+
+func (c *czdbDb) ASN(net.IP) (geo.ASN, error) {
+	return geo.ASN{AutonomousSystemNumber: 54321}, nil
+}
+
+func (c *czdbDb) ISP(net.IP) (geo.ISP, error) {
+	return geo.ISP{ISP: "纯真 ISP"}, nil
+}
+
+func (c *czdbDb) ConnectionType(net.IP) (geo.ConnectionType, error) {
+	return geo.ConnectionType{ConnectionType: "Broadband"}, nil
+}
+
+func (c *czdbDb) Proxy(net.IP) (geo.Proxy, error) {
+	return geo.Proxy{IsProxy: false}, nil
+}
+
+func (c *czdbDb) IsEmpty() bool {
+	return false
+}
+
 func testServer() *Server {
 	return &Server{cache: NewCache(100), gr: &testDb{}, LookupAddr: lookupAddr, LookupPort: lookupPort}
+}
+
+func testHybridServer() *Server {
+	hybrid := &testHybridDb{
+		maxmind: &maxmindDb{},
+		czdbV4:  &czdbDb{},
+		czdbV6:  nil,
+		qqwry:   nil,
+	}
+	return &Server{cache: NewCache(100), gr: hybrid, LookupAddr: lookupAddr, LookupPort: lookupPort}
 }
 
 func httpGet(url string, acceptMediaType string, userAgent string) (string, int, error) {
@@ -150,7 +262,7 @@ func TestDisabledHandlers(t *testing.T) {
 		{s.URL + "/country", "404 page not found", 404},
 		{s.URL + "/country-code", "404 page not found", 404},
 		{s.URL + "/city", "404 page not found", 404},
-		{s.URL + "/json", "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433\n}", 200},
+		{s.URL + "/json", "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"is_proxy\": false\n}", 200},
 	}
 
 	for _, tt := range tests {
@@ -176,7 +288,7 @@ func TestJSONHandlers(t *testing.T) {
 		out    string
 		status int
 	}{
-		{s.URL, "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"country\": \"Elbonia\",\n  \"country_code\": \"EB\",\n  \"country_eu\": false,\n  \"region\": \"North Elbonia\",\n  \"region_code\": \"1234\",\n  \"metro_code\": 1234,\n  \"zip_code\": \"1234\",\n  \"city\": \"Bornyasherk\",\n  \"latitude\": 63.416667,\n  \"longitude\": 10.416667,\n  \"time_zone\": \"Europe/Bornyasherk\",\n  \"asn\": \"AS59795\",\n  \"isp\": \"Hosting4Real\",\n  \"org\": \"Hosting4Real\",\n  \"connection_type\": \"Corporate\",\n  \"hostname\": \"localhost\",\n  \"user_agent\": \"curl/7.2.6.0\"\n}", 200},
+		{s.URL, "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"country\": \"Elbonia\",\n  \"country_code\": \"EB\",\n  \"country_eu\": false,\n  \"region\": \"North Elbonia\",\n  \"region_code\": \"1234\",\n  \"metro_code\": 1234,\n  \"zip_code\": \"1234\",\n  \"city\": \"Bornyasherk\",\n  \"latitude\": 63.416667,\n  \"longitude\": 10.416667,\n  \"time_zone\": \"Europe/Bornyasherk\",\n  \"asn\": \"AS59795\",\n  \"isp\": \"Hosting4Real\",\n  \"org\": \"Hosting4Real\",\n  \"connection_type\": \"Corporate\",\n  \"is_proxy\": false,\n  \"hostname\": \"localhost\",\n  \"user_agent\": \"curl/7.2.6.0\"\n}", 200},
 		{s.URL + "/port/foo", "{\n  \"status\": 400,\n  \"error\": \"invalid port: foo\"\n}", 400},
 		{s.URL + "/port/0", "{\n  \"status\": 400,\n  \"error\": \"invalid port: 0\"\n}", 400},
 		{s.URL + "/port/65537", "{\n  \"status\": 400,\n  \"error\": \"invalid port: 65537\"\n}", 400},
@@ -269,5 +381,61 @@ func TestIPFromRequest(t *testing.T) {
 		if !ip.Equal(out) {
 			t.Errorf("Expected %s, got %s", out, ip)
 		}
+	}
+}
+
+func TestLangParameter(t *testing.T) {
+	s := testHybridServer()
+
+	tests := []struct {
+		name            string
+		lang            string
+		ip              string
+		expectedCountry string
+		expectedISP     string
+	}{
+		{
+			name:            "lang=zh should use CZDB",
+			lang:            "zh",
+			ip:              "114.114.114.114",
+			expectedCountry: "美国", // 测试中纯真库和MaxMind冲突，以MaxMind为准并翻译为中文
+			expectedISP:     "纯真 ISP",
+		},
+		{
+			name:            "lang=en should use MaxMind",
+			lang:            "en",
+			ip:              "1.1.1.1",
+			expectedCountry: "United States",
+			expectedISP:     "MaxMind ISP",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := "http://example.com/json?ip=" + tt.ip
+			if tt.lang != "" {
+				url += "&lang=" + tt.lang
+			}
+
+			req, err := http.NewRequest("GET", url, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Accept", "application/json")
+
+			w := httptest.NewRecorder()
+			appErr := s.JSONHandler(w, req)
+			if appErr != nil {
+				t.Fatal(appErr.Error)
+			}
+
+			body := w.Body.String()
+			if !strings.Contains(body, tt.expectedCountry) {
+				t.Errorf("Expected country %s not found in response: %s", tt.expectedCountry, body)
+			}
+			if !strings.Contains(body, tt.expectedISP) {
+				t.Errorf("Expected ISP %s not found in response: %s", tt.expectedISP, body)
+			}
+		})
 	}
 }

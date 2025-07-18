@@ -123,6 +123,35 @@ func (c *CombinedReader) IsEmpty() bool {
 	return geoipEmpty && ip2proxyEmpty
 }
 
+// Getter methods for http layer lang override - delegate to underlying HybridReader if available
+func (c *CombinedReader) GetMaxmind() Reader {
+	if hr, ok := c.geoip.(interface{ GetMaxmind() Reader }); ok {
+		return hr.GetMaxmind()
+	}
+	return nil
+}
+
+func (c *CombinedReader) GetCzdbV4() Reader {
+	if hr, ok := c.geoip.(interface{ GetCzdbV4() Reader }); ok {
+		return hr.GetCzdbV4()
+	}
+	return nil
+}
+
+func (c *CombinedReader) GetCzdbV6() Reader {
+	if hr, ok := c.geoip.(interface{ GetCzdbV6() Reader }); ok {
+		return hr.GetCzdbV6()
+	}
+	return nil
+}
+
+func (c *CombinedReader) GetQQWry() Reader {
+	if hr, ok := c.geoip.(interface{ GetQQWry() Reader }); ok {
+		return hr.GetQQWry()
+	}
+	return nil
+}
+
 // Helper functions to validate if data is meaningful
 func isValidCountry(country Country) bool {
 	return country.Name != "" && country.Name != "-" &&

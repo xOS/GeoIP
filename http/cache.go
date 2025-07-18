@@ -39,11 +39,24 @@ func key(ip net.IP) uint64 {
 	return h.Sum64()
 }
 
+func keyWithLang(ip net.IP, lang string) uint64 {
+	h := fnv.New64a()
+	h.Write(ip)
+	if lang != "" {
+		h.Write([]byte(lang))
+	}
+	return h.Sum64()
+}
+
 func (c *Cache) Set(ip net.IP, resp Response) {
+	c.SetWithLang(ip, "", resp)
+}
+
+func (c *Cache) SetWithLang(ip net.IP, lang string, resp Response) {
 	if c.capacity == 0 {
 		return
 	}
-	k := key(ip)
+	k := keyWithLang(ip, lang)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	minEvictions := len(c.entries) - c.capacity + 1
@@ -67,7 +80,11 @@ func (c *Cache) Set(ip net.IP, resp Response) {
 }
 
 func (c *Cache) Get(ip net.IP) (Response, bool) {
-	k := key(ip)
+	return c.GetWithLang(ip, "")
+}
+
+func (c *Cache) GetWithLang(ip net.IP, lang string) (Response, bool) {
+	k := keyWithLang(ip, lang)
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	r, ok := c.entries[k]
