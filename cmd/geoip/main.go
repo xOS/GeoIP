@@ -85,6 +85,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Initialize translation system
+	if err := http.InitTranslations(config.TranslationFile); err != nil {
+		log.Printf("Warning: Failed to initialize translations: %v", err)
+	}
+
 	var r geo.Reader
 
 	if config.HybridMode && config.Databases.QQWry != "" {

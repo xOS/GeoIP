@@ -385,6 +385,9 @@ func TestIPFromRequest(t *testing.T) {
 }
 
 func TestLangParameter(t *testing.T) {
+	// 初始化翻译系统（使用内置翻译）
+	InitTranslations("")
+
 	s := testHybridServer()
 
 	tests := []struct {

@@ -7,6 +7,6 @@
 */.DS_Store
 **/.DS_Store
 **/*/.DS_Store
-data
-complete-hybrid.json
-czdb-only.json
+/data
+/complete-hybrid.json
+/czdb-only.json

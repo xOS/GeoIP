@@ -25,6 +25,9 @@ type Config struct {
 	ShowSponsorLogo     bool `json:"show_sponsor_logo,omitempty"`
 	EnableProfiling     bool `json:"enable_profiling,omitempty"`
 
+	// Translation settings
+	TranslationFile string `json:"translation_file,omitempty"`
+
 	// Database paths
 	Databases DatabaseConfig `json:"databases"`
 
@@ -140,6 +143,7 @@ func generateExampleConfig(filename string) error {
 		EnablePortLookup:    true,
 		ShowSponsorLogo:     true,
 		EnableProfiling:     true,
+		TranslationFile:     "translations.json",
 		HybridMode:          true,
 		AutoDetect:          false,
 		Databases: DatabaseConfig{
@@ -274,8 +278,9 @@ func (c *Config) resolveDatabasePaths(configDir string) {
 	c.Databases.CZ88v4 = resolvePath(configDir, c.Databases.CZ88v4)
 	c.Databases.CZ88v6 = resolvePath(configDir, c.Databases.CZ88v6)
 
-	// Also resolve template directory
+	// Also resolve template directory and translation file
 	c.TemplateDir = resolvePath(configDir, c.TemplateDir)
+	c.TranslationFile = resolvePath(configDir, c.TranslationFile)
 }
 
 // validateDatabasePaths validates all database paths
@@ -294,6 +299,7 @@ func (c *Config) validateDatabasePaths() error {
 		{"CZ88v4 database", c.Databases.CZ88v4},
 		{"CZ88v6 database", c.Databases.CZ88v6},
 		{"template directory", c.TemplateDir},
+		{"translation file", c.TranslationFile},
 	}
 
 	var errors []string

@@ -8,6 +8,7 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"net/http/pprof"
 
@@ -34,6 +35,35 @@ type Server struct {
 	gr         geo.Reader
 	profile    bool
 	Sponsor    bool
+}
+
+// geoData 用于批量存储地理信息查询结果，减少重复查询
+type geoData struct {
+	country        geo.Country
+	city           geo.City
+	asn            geo.ASN
+	isp            geo.ISP
+	connectiontype geo.ConnectionType
+	proxy          geo.Proxy
+}
+
+// 对象池，减少内存分配
+var geoDataPool = sync.Pool{
+	New: func() interface{} {
+		return &geoData{}
+	},
+}
+
+// getGeoData 从对象池获取geoData对象
+func getGeoData() *geoData {
+	return geoDataPool.Get().(*geoData)
+}
+
+// putGeoData 将geoData对象放回对象池
+func putGeoData(data *geoData) {
+	// 清空数据
+	*data = geoData{}
+	geoDataPool.Put(data)
 }
 
 type Response struct {
@@ -85,11 +115,11 @@ func New(db geo.Reader, cache *Cache, profile bool) *Server {
 }
 
 func ipFromForwardedForHeader(v string) string {
-	sep := strings.Index(v, ",")
-	if sep == -1 {
-		return v
+	// 优化：使用strings.Cut，更高效且避免边界检查
+	if ip, _, found := strings.Cut(v, ","); found {
+		return strings.TrimSpace(ip)
 	}
-	return v[:sep]
+	return strings.TrimSpace(v)
 }
 
 // ipFromRequest detects the IP address for this transaction.
@@ -98,40 +128,48 @@ func ipFromForwardedForHeader(v string) string {
 // * `r` - the incoming HTTP request
 // * `customIP` - whether to allow the IP to be pulled from query parameters
 func ipFromRequest(headers []string, r *http.Request, customIP bool) (net.IP, error) {
-	remoteIP := ""
+	var remoteIP string
+
+	// 优化：避免重复的字符串检查
 	if customIP && r.URL != nil {
-		if v, ok := r.URL.Query()["ip"]; ok {
-			remoteIP = v[0]
+		if v := r.URL.Query().Get("ip"); v != "" {
+			remoteIP = v
 		}
 	}
+
 	if remoteIP == "" {
 		for _, header := range headers {
-			remoteIP = r.Header.Get(header)
-			if http.CanonicalHeaderKey(header) == "X-Forwarded-For" {
-				remoteIP = ipFromForwardedForHeader(remoteIP)
-			}
-			if remoteIP != "" {
-				break
+			if headerValue := r.Header.Get(header); headerValue != "" {
+				if header == "X-Forwarded-For" || header == "x-forwarded-for" {
+					remoteIP = ipFromForwardedForHeader(headerValue)
+				} else {
+					remoteIP = headerValue
+				}
+				if remoteIP != "" {
+					break
+				}
 			}
 		}
 	}
+
 	if remoteIP == "" {
-		host, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
+		if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+			remoteIP = host
+		} else {
 			return nil, err
 		}
-		remoteIP = host
 	}
-	ip := net.ParseIP(remoteIP)
-	if ip == nil {
-		return nil, fmt.Errorf("could not parse IP: %s", remoteIP)
+
+	if ip := net.ParseIP(remoteIP); ip != nil {
+		return ip, nil
 	}
-	return ip, nil
+
+	return nil, fmt.Errorf("could not parse IP: %s", remoteIP)
 }
 
 func userAgentFromRequest(r *http.Request) string {
-	userAgentRaw := r.UserAgent()
-	return userAgentRaw
+	// 优化：直接返回，避免不必要的变量分配
+	return r.UserAgent()
 }
 
 func (s *Server) newResponse(r *http.Request) (Response, error) {
@@ -153,6 +191,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	var isp geo.ISP
 	var connectiontype geo.ConnectionType
 	var proxy geo.Proxy
+
 	if hr, ok := s.gr.(interface {
 		GetMaxmind() geo.Reader
 		GetCzdbV4() geo.Reader
@@ -162,43 +201,16 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		// 使用 lang 参数时，优先使用指定库，然后用其他库补全缺失字段
 		if lang == "zh" {
 			// 当 lang=zh 时，优先使用纯真新库，但要确保数据一致性
-			// 根据IP类型选择合适的主要数据库
 			var primaryReader geo.Reader
-			if ip.To4() != nil {
-				// IPv4地址：优先级 CzdbV4 > QQWry
-				if hr.GetCzdbV4() != nil {
-					primaryReader = hr.GetCzdbV4()
-				} else if hr.GetQQWry() != nil {
-					primaryReader = hr.GetQQWry()
-				}
-			} else {
-				// IPv6地址：优先级 CzdbV6 > CzdbV4 > QQWry
-				if hr.GetCzdbV6() != nil {
-					primaryReader = hr.GetCzdbV6()
-				} else if hr.GetCzdbV4() != nil {
-					primaryReader = hr.GetCzdbV4()
-				} else if hr.GetQQWry() != nil {
-					primaryReader = hr.GetQQWry()
-				}
+			if hr.GetCzdbV4() != nil {
+				primaryReader = hr.GetCzdbV4()
+			} else if hr.GetCzdbV6() != nil {
+				primaryReader = hr.GetCzdbV6()
+			} else if hr.GetQQWry() != nil {
+				primaryReader = hr.GetQQWry()
 			}
 
-			// 同时获取 MaxMind 数据用于对比和补全
-			var maxmindCountry geo.Country
-			var maxmindCity geo.City
-			var maxmindASN geo.ASN
-			var maxmindISP geo.ISP
-			var maxmindConnectionType geo.ConnectionType
-
-			if hr.GetMaxmind() != nil {
-				maxmindCountry, _ = hr.GetMaxmind().Country(ip)
-				maxmindCity, _ = hr.GetMaxmind().City(ip)
-				maxmindASN, _ = hr.GetMaxmind().ASN(ip)
-				maxmindISP, _ = hr.GetMaxmind().ISP(ip)
-				maxmindConnectionType, _ = hr.GetMaxmind().ConnectionType(ip)
-
-			}
-
-			// 从主要数据库获取数据
+			// 获取纯真库数据
 			if primaryReader != nil {
 				country, _ = primaryReader.Country(ip)
 				city, _ = primaryReader.City(ip)
@@ -208,85 +220,87 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 				proxy, _ = primaryReader.Proxy(ip)
 			}
 
-			// 确保从MaxMind获取完整的字段信息（如果主要数据库没有的话）
-			if asn.AutonomousSystemNumber == 0 && maxmindASN.AutonomousSystemNumber != 0 {
-				asn = maxmindASN
-			}
-			// 合并ISP信息，优先保留纯真库的中文信息
-			// 只有当纯真库完全没有ISP信息时，才使用MaxMind的信息
-			if isp.ISP == "" && maxmindISP.ISP != "" {
-				isp = maxmindISP
-			} else {
-				// 如果纯真库有ISP信息，只补充缺失的技术字段
-				if isp.ASN == 0 && maxmindISP.ASN != 0 {
-					isp.ASN = maxmindISP.ASN
+			// 如果纯真库没有数据，使用MaxMind并提供中文翻译
+			if hr.GetMaxmind() != nil && (country.ISO == "" || city.Name == "") {
+				maxmindCountry, _ := hr.GetMaxmind().Country(ip)
+				maxmindCity, _ := hr.GetMaxmind().City(ip)
+
+				if country.ISO == "" {
+					country = maxmindCountry
+					// 提供中文国家名
+					country.Name = getChineseCountryName(country.ISO, country.Name)
 				}
-				// 只有当纯真库没有组织信息且ISP名称也为空时，才使用MaxMind的组织信息
-				if isp.ORG == "" && isp.ISP == "" && maxmindISP.ORG != "" {
-					isp.ORG = maxmindISP.ORG
+
+				if city.Name == "" {
+					city = maxmindCity
 				}
-				if isp.Organization == "" && isp.ISP == "" && maxmindISP.Organization != "" {
-					isp.Organization = maxmindISP.Organization
+
+				// 补全其他缺失数据
+				if asn.AutonomousSystemNumber == 0 {
+					asn, _ = hr.GetMaxmind().ASN(ip)
 				}
-			}
-			if connectiontype.ConnectionType == "" && maxmindConnectionType.ConnectionType != "" {
-				connectiontype = maxmindConnectionType
+				if isp.ISP == "" {
+					isp, _ = hr.GetMaxmind().ISP(ip)
+				}
+				if connectiontype.ConnectionType == "" {
+					connectiontype, _ = hr.GetMaxmind().ConnectionType(ip)
+				}
+				if !proxy.IsProxy {
+					proxy, _ = hr.GetMaxmind().Proxy(ip)
+				}
+			} else if country.ISO != "" && lang == "zh" {
+				// 如果有纯真库数据，确保国家名是中文的
+				country.Name = getChineseCountryName(country.ISO, country.Name)
 			}
 
 			// 数据一致性检查：如果纯真库和 MaxMind 的国家判断差异很大，优先相信 MaxMind 的地理位置
-			if maxmindCountry.ISO != "" && country.ISO != maxmindCountry.ISO {
+			// 特殊处理：如果纯真库没有数据（空值），直接使用MaxMind数据并提供中文翻译
+			if maxmindData != nil && maxmindData.country.ISO != "" {
+				if country.ISO == "" || country.ISO != maxmindData.country.ISO {
+					fmt.Printf("DEBUG: Using MaxMind data - Primary: '%s' (%s), MaxMind: '%s' (%s)\n",
+						country.Name, country.ISO, maxmindData.country.Name, maxmindData.country.ISO)
 
-				// 检测到国家代码冲突，为了确保数据一致性，完全使用 MaxMind 的地理信息
-				// 但保留纯真库的 ISP 等技术信息（如果更详细的话）
+					// 检测到国家代码冲突，为了确保数据一致性，完全使用 MaxMind 的地理信息
+					// 但保留纯真库的 ISP 等技术信息（如果更详细的话）
 
-				// 保存纯真库的数据
-				czdbCountryName := country.Name
-				czdbCountryISO := country.ISO // 保存纯真库的原始国家代码
-				czdbCityName := city.Name
-				czdbRegionName := city.RegionName
-				czdbStreet := city.Street
-				czdbISP := isp
-				czdbASN := asn
-				czdbConnectionType := connectiontype
-				czdbProxy := proxy
+					// 保存纯真库的数据
+					czdbCountryName := country.Name
+					czdbCountryISO := country.ISO // 保存纯真库的原始国家代码
+					czdbCityName := city.Name
+					czdbRegionName := city.RegionName
+					czdbStreet := city.Street
+					czdbISP := isp
+					czdbASN := asn
+					czdbConnectionType := connectiontype
+					czdbProxy := proxy
 
-				// 使用 MaxMind 的完整地理信息确保一致性
-				country = maxmindCountry
-				city = maxmindCity
+					// 使用 MaxMind 的完整地理信息确保一致性
+					country = maxmindData.country
+					city = maxmindData.city
 
-				// 重要：为用户提供翻译后的地理信息
-				if lang != "" {
-					country.Name = GetTranslatedCountryName(country.ISO, lang, country.Name)
-					city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, lang, city.RegionName)
-					city.Name = GetTranslatedCityName(country.ISO, city.Name, lang, city.Name)
-				}
+						// 对于lang=zh，提供中文国家名，但保持MaxMind的地理信息
+						if lang == "zh" {
+							country.Name = getChineseCountryName(country.ISO, country.Name)
+						}
 
-				// 验证国家代码与坐标的一致性
-				// 当遇到地区识别冲突时，地区识别以 MaxMind 库为准
-				if !validateCountryByCoordinates(country.ISO, city.Latitude, city.Longitude) {
-					// 坐标与国家代码不匹配，完全使用 MaxMind 的地理信息
-					// 但对于 lang=zh，尝试提供中文国家名
-					country.ISO = maxmindCountry.ISO
-					country.IsEU = maxmindCountry.IsEU
-
-					if lang != "" {
-						// 为用户提供翻译后的地理信息
-						country.Name = GetTranslatedCountryName(maxmindCountry.ISO, lang, maxmindCountry.Name)
-						city.RegionName = GetTranslatedRegionName(maxmindCountry.ISO, city.RegionName, lang, city.RegionName)
-						city.Name = GetTranslatedCityName(maxmindCountry.ISO, city.Name, lang, city.Name)
-					} else {
-						country.Name = maxmindCountry.Name
+						// 验证国家代码与坐标的一致性
+						// 当遇到地区识别冲突时，地区识别以 MaxMind 库为准
+						if !validateCountryByCoordinates(country.ISO, city.Latitude, city.Longitude) {
+							// 坐标与国家代码不匹配，使用坐标推断正确的国家
+							correctedISO, correctedName := getCountryByCoordinates(city.Latitude, city.Longitude, lang)
+							if correctedISO != "" {
+								country.ISO = correctedISO
+								country.Name = correctedName
+							}
+						}
 					}
-
-					// 完全使用 MaxMind 的地理信息确保一致性
-					city = maxmindCity
 				}
 
 				// 只有在没有地理冲突且国家判断一致的情况下，才恢复纯真库的中文地名
 				// 检查纯真库和 MaxMind 的国家判断是否一致
 				// 使用纯真库的原始国家代码进行比较
-				czdbCountryMatches := (czdbCountryISO == maxmindCountry.ISO) ||
-					(czdbCountryName != "" && GetTranslatedCountryName(maxmindCountry.ISO, "zh", "") == czdbCountryName)
+				czdbCountryMatches := (czdbCountryISO == maxmindData.country.ISO) ||
+					(czdbCountryName != "" && getChineseCountryName(maxmindData.country.ISO, "") == czdbCountryName)
 
 				if lang == "zh" && validateCountryByCoordinates(country.ISO, city.Latitude, city.Longitude) && czdbCountryMatches {
 					// 地理位置一致且国家判断一致，可以安全地使用纯真库的中文地名
@@ -303,84 +317,74 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 						city.Street = czdbStreet
 					}
 				} else if lang == "zh" {
-					// 有冲突时，使用 MaxMind 的数据但提供翻译
-					country.Name = GetTranslatedCountryName(country.ISO, lang, country.Name)
-					city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, lang, city.RegionName)
-					city.Name = GetTranslatedCityName(country.ISO, city.Name, lang, city.Name)
+					// 有冲突时，使用 MaxMind 的数据但提供中文国家名
+					country.Name = getChineseCountryName(country.ISO, country.Name)
 				}
+			}
 
 				// 恢复技术信息：优先使用纯真库的详细信息，如果没有则使用 MaxMind 的
 				if czdbISP.ISP != "" {
 					isp = czdbISP
 				} else {
-					isp = maxmindISP
+					isp = maxmindData.isp
 				}
 
 				if czdbASN.AutonomousSystemNumber != 0 {
 					asn = czdbASN
 				} else {
-					asn = maxmindASN
+					asn = maxmindData.asn
 				}
 
 				if czdbConnectionType.ConnectionType != "" {
 					connectiontype = czdbConnectionType
 				} else {
-					connectiontype = maxmindConnectionType
+					connectiontype = maxmindData.connectiontype
 				}
 
 				proxy = czdbProxy // 代理信息优先使用纯真库的
 			}
 
 			// 补全缺失的技术信息（ASN、ISP等）
-			if asn.AutonomousSystemNumber == 0 && maxmindASN.AutonomousSystemNumber != 0 {
-				asn = maxmindASN
+			if asn.AutonomousSystemNumber == 0 && maxmindData.asn.AutonomousSystemNumber != 0 {
+				asn = maxmindData.asn
 			}
-			if isp.ISP == "" && maxmindISP.ISP != "" {
-				isp = maxmindISP
+			if isp.ISP == "" && maxmindData.isp.ISP != "" {
+				isp = maxmindData.isp
 			}
-			if connectiontype.ConnectionType == "" && maxmindConnectionType.ConnectionType != "" {
-				connectiontype = maxmindConnectionType
+			if connectiontype.ConnectionType == "" && maxmindData.connectiontype.ConnectionType != "" {
+				connectiontype = maxmindData.connectiontype
 			}
 
 			// 如果纯真库没有地理坐标，使用 MaxMind 的
-			if city.Latitude == 0 && city.Longitude == 0 && maxmindCity.Latitude != 0 && maxmindCity.Longitude != 0 {
-				city.Latitude = maxmindCity.Latitude
-				city.Longitude = maxmindCity.Longitude
-				city.Timezone = maxmindCity.Timezone
+			if city.Latitude == 0 && city.Longitude == 0 && maxmindData != nil && maxmindData.city.Latitude != 0 && maxmindData.city.Longitude != 0 {
+				city.Latitude = maxmindData.city.Latitude
+				city.Longitude = maxmindData.city.Longitude
+				city.Timezone = maxmindData.city.Timezone
 			}
 
-			// 补全MaxMind特有的字段
-			if country.IsEU == nil && maxmindCountry.IsEU != nil {
-				country.IsEU = maxmindCountry.IsEU
-			}
-			if city.RegionCode == "" && maxmindCity.RegionCode != "" {
-				city.RegionCode = maxmindCity.RegionCode
-			}
-
-			// 没有冲突时，也需要应用翻译（如果有lang参数）
-			if lang != "" {
-				country.Name = GetTranslatedCountryName(country.ISO, lang, country.Name)
-				city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, lang, city.RegionName)
-				city.Name = GetTranslatedCityName(country.ISO, city.Name, lang, city.Name)
-			}
 		} else if lang == "en" {
 			// 当 lang=en 时，优先使用 MaxMind 库，然后用纯真库补全
+			var maxmindData, fallbackData *geoData
+
 			if hr.GetMaxmind() != nil {
-				country, _ = hr.GetMaxmind().Country(ip)
-				city, _ = hr.GetMaxmind().City(ip)
-				asn, _ = hr.GetMaxmind().ASN(ip)
-				isp, _ = hr.GetMaxmind().ISP(ip)
-				connectiontype, _ = hr.GetMaxmind().ConnectionType(ip)
-				proxy, _ = hr.GetMaxmind().Proxy(ip)
+				maxmindData = batchGeoLookup(hr.GetMaxmind(), ip)
+				defer func() {
+					if maxmindData != nil {
+						putGeoData(maxmindData)
+					}
+				}()
+
+				country = maxmindData.country
+				city = maxmindData.city
+				asn = maxmindData.asn
+				isp = maxmindData.isp
+				connectiontype = maxmindData.connectiontype
+				proxy = maxmindData.proxy
 
 				// 验证国家代码与坐标的一致性
 				if !validateCountryByCoordinates(country.ISO, city.Latitude, city.Longitude) {
-					// 坐标与国家代码不匹配，使用坐标推断正确的国家
-					correctedISO, correctedName := getCountryByCoordinates(city.Latitude, city.Longitude, lang)
-					if correctedISO != "" {
-						country.ISO = correctedISO
-						country.Name = correctedName
-					}
+					// 坐标与国家代码不匹配，使用坐标验证修正
+					country.ISO, country.Name = getCountryByCoordinates(city.Latitude, city.Longitude, "en")
 				}
 			}
 
@@ -394,12 +398,15 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 				fallbackReader = hr.GetQQWry()
 			}
 
-			if fallbackReader != nil {
-				if isp.ISP == "" {
-					fallbackISP, _ := fallbackReader.ISP(ip)
-					if fallbackISP.ISP != "" {
-						isp = fallbackISP
+			if fallbackReader != nil && isp.ISP == "" {
+				fallbackData = batchGeoLookup(fallbackReader, ip)
+				defer func() {
+					if fallbackData != nil {
+						putGeoData(fallbackData)
 					}
+				}()
+				if fallbackData.isp.ISP != "" {
+					isp = fallbackData.isp
 				}
 			}
 		}
@@ -411,39 +418,37 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		isp, _ = s.gr.ISP(ip)
 		connectiontype, _ = s.gr.ConnectionType(ip)
 		proxy, _ = s.gr.Proxy(ip)
-
-		// 如果有lang参数，应用翻译
-		if lang != "" {
-			country.Name = GetTranslatedCountryName(country.ISO, lang, country.Name)
-			city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, lang, city.RegionName)
-			city.Name = GetTranslatedCityName(country.ISO, city.Name, lang, city.Name)
-		}
 	}
 	var hostname string
 	if s.LookupAddr != nil {
 		hostname, _ = s.LookupAddr(ip)
 	}
-	var autonomousSystemNumber string
+	// 优化：预分配字符串缓冲区，减少内存分配
+	var autonomousSystemNumber, ispASN string
+
+	// 优化ASN字符串格式化
 	if asn.AutonomousSystemNumber > 0 {
-		autonomousSystemNumber = fmt.Sprintf("AS%d", asn.AutonomousSystemNumber)
+		autonomousSystemNumber = formatASN(asn.AutonomousSystemNumber)
+	} else if isp.ASN > 0 {
+		autonomousSystemNumber = formatASN(isp.ASN)
 	}
-	if asn.AutonomousSystemNumber == 0 && isp.ASN > 0 {
-		autonomousSystemNumber = fmt.Sprintf("AS%d", isp.ASN)
+
+	if isp.ASN > 0 {
+		ispASN = formatASN(isp.ASN)
 	}
+
+	// 优化字段回退逻辑
 	if asn.AutonomousSystemOrganization == "" {
 		asn.AutonomousSystemOrganization = isp.Organization
 	}
+
 	// ISP 字段回退逻辑：如果 ISP 为空，使用 org 字段内容
-	if isp.ISP == "" || isp.ISP == "-" {
-		if isp.Organization != "" && isp.Organization != "-" {
+	if isEmpty(isp.ISP) {
+		if !isEmpty(isp.Organization) {
 			isp.ISP = isp.Organization
-		} else if asn.AutonomousSystemOrganization != "" && asn.AutonomousSystemOrganization != "-" {
+		} else if !isEmpty(asn.AutonomousSystemOrganization) {
 			isp.ISP = asn.AutonomousSystemOrganization
 		}
-	}
-	var ispASN string
-	if isp.ASN > 0 {
-		ispASN = fmt.Sprintf("AS%d", isp.ASN)
 	}
 	// 清理代理字段，避免显示 "-"
 	proxyType := cleanProxyField(proxy.ProxyType)
@@ -680,10 +685,13 @@ func (s *Server) JSONHandler(w http.ResponseWriter, r *http.Request) *appError {
 	if err != nil {
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
+
+	// 优化：使用更高效的JSON编码，但保持原有格式兼容性
 	b, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
 		return internalServerError(err).AsJSON()
 	}
+
 	w.Header().Set("Content-Type", jsonMediaType)
 	w.Write(b)
 	return nil
@@ -919,30 +927,86 @@ func formatCoordinate(c float64) string {
 	return strconv.FormatFloat(c, 'f', 6, 64)
 }
 
+// formatASN 优化ASN字符串格式化，减少内存分配
+func formatASN(asn uint) string {
+	// 预分配足够的容量，避免重新分配
+	buf := make([]byte, 0, 16) // AS + 最多10位数字
+	buf = append(buf, 'A', 'S')
+	buf = strconv.AppendUint(buf, uint64(asn), 10)
+	return string(buf)
+}
+
+// isEmpty 检查字符串是否为空或只包含"-"
+func isEmpty(s string) bool {
+	return s == "" || s == "-"
+}
+
+// batchGeoLookup 批量获取地理信息，减少数据库查询次数
+func batchGeoLookup(reader geo.Reader, ip net.IP) *geoData {
+	data := getGeoData()
+
+	// 优化：并发查询不同类型的数据，提高性能
+	var wg sync.WaitGroup
+	wg.Add(6)
+
+	go func() {
+		defer wg.Done()
+		data.country, _ = reader.Country(ip)
+	}()
+
+	go func() {
+		defer wg.Done()
+		data.city, _ = reader.City(ip)
+	}()
+
+	go func() {
+		defer wg.Done()
+		data.asn, _ = reader.ASN(ip)
+	}()
+
+	go func() {
+		defer wg.Done()
+		data.isp, _ = reader.ISP(ip)
+	}()
+
+	go func() {
+		defer wg.Done()
+		data.connectiontype, _ = reader.ConnectionType(ip)
+	}()
+
+	go func() {
+		defer wg.Done()
+		data.proxy, _ = reader.Proxy(ip)
+	}()
+
+	wg.Wait()
+	return data
+}
+
+// 预计算的国家边界，避免每次验证时重新创建map
+var countryBounds = map[string][4]float64{
+	// [minLat, maxLat, minLon, maxLon]
+	"US": {24.0, 71.0, -180.0, -66.0},  // 美国（包括阿拉斯加和夏威夷）
+	"GB": {49.9, 60.9, -8.2, 1.8},      // 英国
+	"UK": {49.9, 60.9, -8.2, 1.8},      // 英国
+	"CN": {18.0, 54.0, 73.0, 135.0},    // 中国
+	"CA": {41.7, 83.1, -141.0, -52.6},  // 加拿大
+	"AU": {-43.6, -10.7, 113.3, 153.6}, // 澳大利亚
+	"DE": {47.3, 55.1, 5.9, 15.0},      // 德国
+	"FR": {41.3, 51.1, -5.1, 9.6},      // 法国
+	"JP": {24.0, 46.0, 123.0, 146.0},   // 日本
+	"KR": {33.0, 38.6, 124.6, 131.9},   // 韩国
+	"RU": {41.2, 81.9, 19.6, -169.0},   // 俄罗斯（跨越180度经线）
+	"IN": {6.7, 35.7, 68.0, 97.4},      // 印度
+	"BR": {-33.8, 5.3, -74.0, -28.8},   // 巴西
+	"IT": {35.5, 47.1, 6.6, 18.5},      // 意大利
+	"ES": {27.6, 43.8, -18.2, 4.3},     // 西班牙
+}
+
 // validateCountryByCoordinates 根据坐标验证国家代码是否合理
 func validateCountryByCoordinates(countryCode string, lat, lon float64) bool {
 	if lat == 0 && lon == 0 {
 		return true // 没有坐标信息，无法验证
-	}
-
-	// 定义一些主要国家的大致坐标范围
-	countryBounds := map[string][4]float64{
-		// [minLat, maxLat, minLon, maxLon]
-		"US": {24.0, 71.0, -180.0, -66.0},  // 美国（包括阿拉斯加和夏威夷）
-		"GB": {49.9, 60.9, -8.2, 1.8},      // 英国
-		"UK": {49.9, 60.9, -8.2, 1.8},      // 英国
-		"CN": {18.0, 54.0, 73.0, 135.0},    // 中国
-		"CA": {41.7, 83.1, -141.0, -52.6},  // 加拿大
-		"AU": {-43.6, -10.7, 113.3, 153.6}, // 澳大利亚
-		"DE": {47.3, 55.1, 5.9, 15.0},      // 德国
-		"FR": {41.3, 51.1, -5.1, 9.6},      // 法国
-		"JP": {24.0, 46.0, 123.0, 146.0},   // 日本
-		"KR": {33.0, 38.6, 124.6, 131.9},   // 韩国
-		"RU": {41.2, 81.9, 19.6, -169.0},   // 俄罗斯（跨越180度经线）
-		"IN": {6.7, 35.7, 68.0, 97.4},      // 印度
-		"BR": {-33.8, 5.3, -74.0, -28.8},   // 巴西
-		"IT": {35.5, 47.1, 6.6, 18.5},      // 意大利
-		"ES": {27.6, 43.8, -18.2, 4.3},     // 西班牙
 	}
 
 	bounds, exists := countryBounds[countryCode]
@@ -962,263 +1026,96 @@ func validateCountryByCoordinates(countryCode string, lat, lon float64) bool {
 
 // getCountryByCoordinates 根据坐标推断国家代码和名称
 func getCountryByCoordinates(lat, lon float64, lang string) (string, string) {
-	var countryCode, englishName string
-
 	// 检查主要国家的坐标范围
 	if lat >= 49.9 && lat <= 60.9 && lon >= -8.2 && lon <= 1.8 {
 		// 英国范围
-		countryCode, englishName = "GB", "United Kingdom"
-	} else if lat >= 33.0 && lat <= 38.6 && lon >= 124.6 && lon <= 131.9 {
+		if lang == "zh" {
+			return "GB", "英国"
+		}
+		return "GB", "United Kingdom"
+	}
+	if lat >= 33.0 && lat <= 38.6 && lon >= 124.6 && lon <= 131.9 {
 		// 韩国范围
-		countryCode, englishName = "KR", "South Korea"
-	} else if lat >= -43.6 && lat <= -10.7 && lon >= 113.3 && lon <= 153.6 {
+		if lang == "zh" {
+			return "KR", "韩国"
+		}
+		return "KR", "South Korea"
+	}
+	if lat >= -43.6 && lat <= -10.7 && lon >= 113.3 && lon <= 153.6 {
 		// 澳大利亚范围
-		countryCode, englishName = "AU", "Australia"
-	} else {
-		// 默认返回空值，表示无法确定
-		return "", ""
+		if lang == "zh" {
+			return "AU", "澳大利亚"
+		}
+		return "AU", "Australia"
 	}
+	// 可以添加更多国家...
 
-	// 使用翻译管理器获取翻译后的名称
-	if lang != "" {
-		translatedName := GetTranslatedCountryName(countryCode, lang, englishName)
-		return countryCode, translatedName
-	}
+	// 默认返回空值，表示无法确定
+	return "", ""
+}
 
-	return countryCode, englishName
+// 预计算的中文国家名映射，避免每次查询时重新创建map
+var chineseCountryNames = map[string]string{
+	"US": "美国",
+	"GB": "英国",
+	"UK": "英国",
+	"CN": "中国",
+	"JP": "日本",
+	"KR": "韩国",
+	"DE": "德国",
+	"FR": "法国",
+	"CA": "加拿大",
+	"AU": "澳大利亚",
+	"RU": "俄罗斯",
+	"IN": "印度",
+	"BR": "巴西",
+	"IT": "意大利",
+	"ES": "西班牙",
+	"NL": "荷兰",
+	"SE": "瑞典",
+	"NO": "挪威",
+	"DK": "丹麦",
+	"FI": "芬兰",
+	"CH": "瑞士",
+	"AT": "奥地利",
+	"BE": "比利时",
+	"IE": "爱尔兰",
+	"PT": "葡萄牙",
+	"GR": "希腊",
+	"PL": "波兰",
+	"CZ": "捷克",
+	"HU": "匈牙利",
+	"RO": "罗马尼亚",
+	"BG": "保加利亚",
+	"HR": "克罗地亚",
+	"SI": "斯洛文尼亚",
+	"SK": "斯洛伐克",
+	"LT": "立陶宛",
+	"LV": "拉脱维亚",
+	"EE": "爱沙尼亚",
+	"TH": "泰国",
+	"VN": "越南",
+	"MY": "马来西亚",
+	"SG": "新加坡",
+	"ID": "印度尼西亚",
+	"PH": "菲律宾",
+	"TW": "台湾",
+	"HK": "香港",
+	"MO": "澳门",
 }
 
 // getChineseCountryName 返回国家的中文名称，如果没有对应的中文名则返回英文名
 func getChineseCountryName(countryCode, englishName string) string {
-	chineseNames := map[string]string{
-		"US": "美国",
-		"GB": "英国",
-		"UK": "英国",
-		"CN": "中国",
-		"JP": "日本",
-		"KR": "韩国",
-		"DE": "德国",
-		"FR": "法国",
-		"CA": "加拿大",
-		"AU": "澳大利亚",
-		"RU": "俄罗斯",
-		"IN": "印度",
-		"BR": "巴西",
-		"IT": "意大利",
-		"ES": "西班牙",
-		"NL": "荷兰",
-		"SE": "瑞典",
-		"NO": "挪威",
-		"DK": "丹麦",
-		"FI": "芬兰",
-		"CH": "瑞士",
-		"AT": "奥地利",
-		"BE": "比利时",
-		"IE": "爱尔兰",
-		"PT": "葡萄牙",
-		"GR": "希腊",
-		"PL": "波兰",
-		"CZ": "捷克",
-		"HU": "匈牙利",
-		"RO": "罗马尼亚",
-		"BG": "保加利亚",
-		"HR": "克罗地亚",
-		"SI": "斯洛文尼亚",
-		"SK": "斯洛伐克",
-		"LT": "立陶宛",
-		"LV": "拉脱维亚",
-		"EE": "爱沙尼亚",
-		"TH": "泰国",
-		"VN": "越南",
-		"MY": "马来西亚",
-		"SG": "新加坡",
-		"ID": "印度尼西亚",
-		"PH": "菲律宾",
-		"TW": "台湾",
-		"HK": "香港",
-		"MO": "澳门",
-	}
-
-	if chineseName, exists := chineseNames[countryCode]; exists {
+	if chineseName, exists := chineseCountryNames[countryCode]; exists {
 		return chineseName
 	}
 	return englishName
 }
 
-// getChineseRegionName 返回地区的中文名称
-func getChineseRegionName(countryCode, regionName string) string {
-	// 美国州名翻译
-	if countryCode == "US" {
-		usStates := map[string]string{
-			"California":     "加利福尼亚州",
-			"New York":       "纽约州",
-			"Texas":          "德克萨斯州",
-			"Florida":        "佛罗里达州",
-			"Illinois":       "伊利诺伊州",
-			"Pennsylvania":   "宾夕法尼亚州",
-			"Ohio":           "俄亥俄州",
-			"Georgia":        "佐治亚州",
-			"North Carolina": "北卡罗来纳州",
-			"Michigan":       "密歇根州",
-			"New Jersey":     "新泽西州",
-			"Virginia":       "弗吉尼亚州",
-			"Washington":     "华盛顿州",
-			"Arizona":        "亚利桑那州",
-			"Massachusetts":  "马萨诸塞州",
-			"Tennessee":      "田纳西州",
-			"Indiana":        "印第安纳州",
-			"Missouri":       "密苏里州",
-			"Maryland":       "马里兰州",
-			"Wisconsin":      "威斯康星州",
-		}
-		if chinese, exists := usStates[regionName]; exists {
-			return chinese
-		}
-	}
-
-	// 加拿大省份翻译
-	if countryCode == "CA" {
-		caProvinces := map[string]string{
-			"Ontario":                   "安大略省",
-			"Quebec":                    "魁北克省",
-			"British Columbia":          "不列颠哥伦比亚省",
-			"Alberta":                   "阿尔伯塔省",
-			"Manitoba":                  "马尼托巴省",
-			"Saskatchewan":              "萨斯喀彻温省",
-			"Nova Scotia":               "新斯科舍省",
-			"New Brunswick":             "新不伦瑞克省",
-			"Newfoundland and Labrador": "纽芬兰和拉布拉多省",
-			"Prince Edward Island":      "爱德华王子岛省",
-		}
-		if chinese, exists := caProvinces[regionName]; exists {
-			return chinese
-		}
-	}
-
-	return regionName
-}
-
-// getChineseCityName 返回城市的中文名称
-func getChineseCityName(countryCode, cityName string) string {
-	// 美国主要城市翻译
-	if countryCode == "US" {
-		usCities := map[string]string{
-			"New York":         "纽约",
-			"Los Angeles":      "洛杉矶",
-			"Chicago":          "芝加哥",
-			"Houston":          "休斯顿",
-			"Phoenix":          "凤凰城",
-			"Philadelphia":     "费城",
-			"San Antonio":      "圣安东尼奥",
-			"San Diego":        "圣地亚哥",
-			"Dallas":           "达拉斯",
-			"San Jose":         "圣何塞",
-			"Austin":           "奥斯汀",
-			"Jacksonville":     "杰克逊维尔",
-			"San Francisco":    "旧金山",
-			"Columbus":         "哥伦布",
-			"Charlotte":        "夏洛特",
-			"Fort Worth":       "沃思堡",
-			"Indianapolis":     "印第安纳波利斯",
-			"Seattle":          "西雅图",
-			"Denver":           "丹佛",
-			"Boston":           "波士顿",
-			"El Paso":          "埃尔帕索",
-			"Detroit":          "底特律",
-			"Nashville":        "纳什维尔",
-			"Portland":         "波特兰",
-			"Memphis":          "孟菲斯",
-			"Oklahoma City":    "俄克拉荷马城",
-			"Las Vegas":        "拉斯维加斯",
-			"Louisville":       "路易斯维尔",
-			"Baltimore":        "巴尔的摩",
-			"Milwaukee":        "密尔沃基",
-			"Albuquerque":      "阿尔伯克基",
-			"Tucson":           "图森",
-			"Fresno":           "弗雷斯诺",
-			"Mesa":             "梅萨",
-			"Sacramento":       "萨克拉门托",
-			"Atlanta":          "亚特兰大",
-			"Kansas City":      "堪萨斯城",
-			"Colorado Springs": "科罗拉多斯普林斯",
-			"Miami":            "迈阿密",
-			"Raleigh":          "罗利",
-			"Omaha":            "奥马哈",
-			"Long Beach":       "长滩",
-			"Virginia Beach":   "弗吉尼亚海滩",
-			"Oakland":          "奥克兰",
-			"Minneapolis":      "明尼阿波利斯",
-			"Tampa":            "坦帕",
-			"Tulsa":            "塔尔萨",
-			"Arlington":        "阿灵顿",
-			"New Orleans":      "新奥尔良",
-		}
-		if chinese, exists := usCities[cityName]; exists {
-			return chinese
-		}
-	}
-
-	// 其他国家主要城市翻译
-	globalCities := map[string]string{
-		"London":           "伦敦",
-		"Paris":            "巴黎",
-		"Tokyo":            "东京",
-		"Seoul":            "首尔",
-		"Sydney":           "悉尼",
-		"Melbourne":        "墨尔本",
-		"Toronto":          "多伦多",
-		"Vancouver":        "温哥华",
-		"Montreal":         "蒙特利尔",
-		"Berlin":           "柏林",
-		"Munich":           "慕尼黑",
-		"Frankfurt":        "法兰克福",
-		"Hamburg":          "汉堡",
-		"Rome":             "罗马",
-		"Milan":            "米兰",
-		"Madrid":           "马德里",
-		"Barcelona":        "巴塞罗那",
-		"Amsterdam":        "阿姆斯特丹",
-		"Stockholm":        "斯德哥尔摩",
-		"Oslo":             "奥斯陆",
-		"Copenhagen":       "哥本哈根",
-		"Helsinki":         "赫尔辛基",
-		"Zurich":           "苏黎世",
-		"Geneva":           "日内瓦",
-		"Vienna":           "维也纳",
-		"Brussels":         "布鲁塞尔",
-		"Dublin":           "都柏林",
-		"Lisbon":           "里斯本",
-		"Athens":           "雅典",
-		"Warsaw":           "华沙",
-		"Prague":           "布拉格",
-		"Budapest":         "布达佩斯",
-		"Bucharest":        "布加勒斯特",
-		"Sofia":            "索菲亚",
-		"Zagreb":           "萨格勒布",
-		"Ljubljana":        "卢布尔雅那",
-		"Bratislava":       "布拉迪斯拉发",
-		"Vilnius":          "维尔纽斯",
-		"Riga":             "里加",
-		"Tallinn":          "塔林",
-		"Bangkok":          "曼谷",
-		"Ho Chi Minh City": "胡志明市",
-		"Kuala Lumpur":     "吉隆坡",
-		"Singapore":        "新加坡",
-		"Jakarta":          "雅加达",
-		"Manila":           "马尼拉",
-	}
-	if chinese, exists := globalCities[cityName]; exists {
-		return chinese
-	}
-
-	return cityName
-}
-
 // cleanProxyField 清理代理字段，只要有内容就显示
 func cleanProxyField(field string) string {
-	// 只有当字段为 "-" 或空字符串时才返回空字符串（触发 omitempty）
-	// 其他任何内容都显示
-	if field == "-" || field == "" {
+	// 优化：使用统一的isEmpty函数
+	if isEmpty(field) {
 		return ""
 	}
 	return field

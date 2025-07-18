@@ -3,6 +3,7 @@ package http
 import (
 	"container/list"
 	"fmt"
+	"hash"
 	"hash/fnv"
 	"net"
 	"sync"
@@ -33,14 +34,29 @@ func NewCache(capacity int) *Cache {
 	}
 }
 
+// 哈希对象池，减少内存分配
+var hashPool = sync.Pool{
+	New: func() interface{} {
+		return fnv.New64a()
+	},
+}
+
 func key(ip net.IP) uint64 {
-	h := fnv.New64a()
+	h := hashPool.Get().(hash.Hash64)
+	defer func() {
+		h.Reset()
+		hashPool.Put(h)
+	}()
 	h.Write(ip)
 	return h.Sum64()
 }
 
 func keyWithLang(ip net.IP, lang string) uint64 {
-	h := fnv.New64a()
+	h := hashPool.Get().(hash.Hash64)
+	defer func() {
+		h.Reset()
+		hashPool.Put(h)
+	}()
 	h.Write(ip)
 	if lang != "" {
 		h.Write([]byte(lang))
@@ -57,14 +73,39 @@ func (c *Cache) SetWithLang(ip net.IP, lang string, resp Response) {
 		return
 	}
 	k := keyWithLang(ip, lang)
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	minEvictions := len(c.entries) - c.capacity + 1
-	if minEvictions > 0 { // At or above capacity. Shrink the cache
+
+	// 优化：先检查是否已存在，避免不必要的操作
+	if current, exists := c.entries[k]; exists {
+		// 更新现有条目，移到最后
+		c.values.Remove(current)
+		c.entries[k] = c.values.PushBack(resp)
+		return
+	}
+
+	// 优化：当达到容量时进行清理
+	if len(c.entries) >= c.capacity {
+		// 计算需要清理的条目数
+		minEvictions := len(c.entries) - c.capacity + 1
+
+		// 为了性能，批量清理更多条目（最多25%），但至少清理到容量以下
+		evictCount := minEvictions
+		batchSize := c.capacity / 4
+		if batchSize > minEvictions && c.capacity > 4 {
+			evictCount = batchSize
+		}
+
 		evicted := 0
-		for el := c.values.Front(); el != nil && evicted < minEvictions; {
-			value := el.Value.(Response)
-			delete(c.entries, key(value.IP))
+		for el := c.values.Front(); el != nil && evicted < evictCount; {
+			// 找到并删除对应的map条目
+			for k, v := range c.entries {
+				if v == el {
+					delete(c.entries, k)
+					break
+				}
+			}
 			next := el.Next()
 			c.values.Remove(el)
 			el = next
@@ -72,10 +113,7 @@ func (c *Cache) SetWithLang(ip net.IP, lang string, resp Response) {
 		}
 		c.evictions += uint64(evicted)
 	}
-	current, ok := c.entries[k]
-	if ok {
-		c.values.Remove(current)
-	}
+
 	c.entries[k] = c.values.PushBack(resp)
 }
 
