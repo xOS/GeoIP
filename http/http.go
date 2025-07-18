@@ -221,11 +221,11 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 				if isp.ASN == 0 && maxmindISP.ASN != 0 {
 					isp.ASN = maxmindISP.ASN
 				}
-				// 只有当纯真库没有组织信息且ISP名称也为空时，才使用MaxMind的组织信息
-				if isp.ORG == "" && isp.ISP == "" && maxmindISP.ORG != "" {
+				// 补充缺失的组织信息字段（即使纯真库有ISP名称）
+				if isp.ORG == "" && maxmindISP.ORG != "" {
 					isp.ORG = maxmindISP.ORG
 				}
-				if isp.Organization == "" && isp.ISP == "" && maxmindISP.Organization != "" {
+				if isp.Organization == "" && maxmindISP.Organization != "" {
 					isp.Organization = maxmindISP.Organization
 				}
 			}
@@ -340,6 +340,17 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 			}
 			if connectiontype.ConnectionType == "" && maxmindConnectionType.ConnectionType != "" {
 				connectiontype = maxmindConnectionType
+			}
+
+			// 补充纯真库缺失的地理信息字段
+			if city.RegionName == "" && maxmindCity.RegionName != "" {
+				city.RegionName = maxmindCity.RegionName
+			}
+			if city.Name == "" && maxmindCity.Name != "" {
+				city.Name = maxmindCity.Name
+			}
+			if city.PostalCode == "" && maxmindCity.PostalCode != "" {
+				city.PostalCode = maxmindCity.PostalCode
 			}
 
 			// 如果纯真库没有地理坐标，使用 MaxMind 的
