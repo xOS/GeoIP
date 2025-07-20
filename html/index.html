@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <title>你的 IP | 楠格</title>
@@ -12,282 +12,232 @@
     <link rel="canonical" href="https://static.nange.cn/" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-d/pure/1.0.1/pure-min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-d/pure/1.0.1/grids-responsive-min.css"
     />
 
     {{ template "script.html" . }} {{ template "styles.html" . }}
   </head>
   <body>
-    <div class="content">
-      <div class="pure-g gutters center">
-        <div class="pure-u-1 pure-u-md-2-3">
-          <div class="l-box">
-            <h1>你的 IP</h1>
-            <p><code class="ip">{{ .IP }}</code></p>
-            <p>
-              查询 IP 信息的首选
-            </p>
+    <!-- 背景装饰 -->
+    <div class="background-decoration">
+      <div class="bg-circle bg-circle-1"></div>
+      <div class="bg-circle bg-circle-2"></div>
+      <div class="bg-circle bg-circle-3"></div>
+    </div>
+
+    <!-- 主要内容 -->
+    <div class="main-container">
+      <!-- 头部区域 -->
+      <header class="header">
+        <div class="header-content">
+          <h1 class="main-title">IP 地址查询</h1>
+          <div class="ip-display">
+            <span class="ip-value">{{ .IP }}</span>
           </div>
-        </div>
-        <div class="pure-u-1 pure-u-md-1-3">
-          {{ if .Sponsor }}
-          <div class="l-box leafcloud-placement">
-            <div class="pure-g">
-              <div class="pure-u pure-u-md-1">
-                <div class="leafcloud-logo">
-                  <a href="https://donate.stripe.com/28obMffW78Pogb6145" target="_blank">
-                    <img src="https://static.nange.cn/image/others/star.png" style="width: 80px;">
-                  </a>
-                </div>
-              </div>
-              <div class="pure-u pure-u-md-1">
-                <p>
-                  本站由<br />
-                  <a href="https://www.nange.cn">
-                    楠格
-                  </a>运营维护
-                </p>
-              </div>
+          
+          <!-- 顶部查询框 -->
+          <div class="top-query-section">
+            <div class="search-container">
+              <input
+                id="ipInput"
+                type="text"
+                placeholder="输入 IP 地址查询其他位置"
+                class="search-input"
+                onkeyup="updateIP(this.value)"
+              />
+              <button
+                type="button"
+                class="search-btn"
+                onclick="navigate()"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                </svg>
+              </button>
             </div>
           </div>
-          {{ end }}
         </div>
-      </div>
+      </header>
 
-      <div class="pure-g gutters center">
-        <!-- COLUMN 1 -->
-        <div class="pure-u-1 pure-u-md-1-2 col">
-          <div class="l-box">
+      <!-- 主要内容区域 -->
+      <div class="content-wrapper">
+        <!-- 左侧信息框 -->
+        <div class="info-panel">
+          <div class="panel-header">
             <h2>IP 详细信息</h2>
-            <table class="info-table">
-              <tr>
-                <th scope="row">IP 地址</th>
-                <td>{{ .IP }}</td>
-              </tr>
-              <tr>
-                <th scope="row">Decimal</th>
-                <td>{{ .IPDecimal }}</td>
-              </tr>
-              {{ if .Country }}
-              <tr>
-                <th scope="row">地区</th>
-                <td>{{ .Country }}</td>
-              </tr>
-              {{ end }} {{ if .CountryCode }}
-              <tr>
-                <th scope="row">地区代码</th>
-                <td>{{ .CountryCode }}</td>
-              </tr>
-              {{ end }} {{ if .CountryEU }}
-              <tr>
-                <th scope="row">欧盟</th>
-                <td>{{ .CountryEU }}</td>
-              </tr>
-              {{ end }} {{ if .RegionName }}
-              <tr>
-                <th scope="row">省</th>
-                <td>{{ .RegionName }}</td>
-              </tr>
-              {{ end }} {{ if .RegionCode }}
-              <tr>
-                <th scope="row">省代码</th>
-                <td>{{ .RegionCode }}</td>
-              </tr>
-              {{ end }} {{ if .MetroCode }}
-              <tr>
-                <th scope="row">都会代码</th>
-                <td>{{ .MetroCode }}</td>
-              </tr>
-              {{ end }} {{ if .PostalCode }}
-              <tr>
-                <th scope="row">邮编</th>
-                <td>{{ .PostalCode }}</td>
-              </tr>
-              {{ end }} {{ if .City }}
-              <tr>
-                <th scope="row">城市</th>
-                <td>{{ .City }}</td>
-              </tr>
-              {{ end }} {{ if .Latitude }}
-              <tr>
-                <th scope="row">纬度</th>
-                <td>{{ .Latitude }}</td>
-              </tr>
-              {{ end }} {{ if .Longitude }}
-              <tr>
-                <th scope="row">经度</th>
-                <td>{{ .Longitude }}</td>
-              </tr>
-              {{ end }} {{ if .Timezone }}
-              <tr>
-                <th scope="row">时区</th>
-                <td>{{ .Timezone }}</td>
-              </tr>
-              {{ end }} {{ if .ASN }}
-              <tr>
-                <th scope="row">ASN</th>
-                <td>{{ .ASN }}</td>
-              </tr>
-              {{ end }} {{ if .ISP }}
-              <tr>
-                <th scope="row">服务商</th>
-                <td>{{ .ISP }}</td>
-              </tr>
-              {{ end }} {{ if .ORG }}
-              <tr>
-                <th scope="row">所属组织</th>
-                <td>{{ .ORG }}</td>
-              </tr>
-              {{ end }}{{ if .ConnectionType }}
-              <tr>
-                <th scope="row">网络类型</th>
-                <td>{{ .ConnectionType }}</td>
-              </tr>
-              {{ end }}{{ if .Hostname }}
-              <tr>
-                <th scope="row">主机名</th>
-                <td>{{ .Hostname }}</td>
-              </tr>
-              {{ end }} {{ if .UserAgent }}
-              <tr>
-                <th scope="row">用户代理</th>
-                <td>{{ .UserAgent }}</td>
-              </tr>
-              {{ end }}
-            </table>
+          </div>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">IP 地址</span>
+              <span class="info-value">{{ .IP }}</span>
+            </div>
+            {{ if .IPDecimal }}
+            <div class="info-item">
+              <span class="info-label">Decimal</span>
+              <span class="info-value">{{ .IPDecimal }}</span>
+            </div>
+            {{ end }}
             {{ if .Country }}
+            <div class="info-item">
+              <span class="info-label">国家/地区</span>
+              <span class="info-value">{{ .Country }}</span>
+            </div>
+            {{ end }}
+            {{ if .CountryCode }}
+            <div class="info-item">
+              <span class="info-label">国家代码</span>
+              <span class="info-value">{{ .CountryCode }}</span>
+            </div>
+            {{ end }}
+            {{ if .RegionName }}
+            <div class="info-item">
+              <span class="info-label">省/州</span>
+              <span class="info-value">{{ .RegionName }}</span>
+            </div>
+            {{ end }}
+            {{ if .City }}
+            <div class="info-item">
+              <span class="info-label">城市</span>
+              <span class="info-value">{{ .City }}</span>
+            </div>
+            {{ end }}
+            {{ if .PostalCode }}
+            <div class="info-item">
+              <span class="info-label">邮编</span>
+              <span class="info-value">{{ .PostalCode }}</span>
+            </div>
+            {{ end }}
+            {{ if .Latitude }}
+            <div class="info-item">
+              <span class="info-label">纬度</span>
+              <span class="info-value">{{ .Latitude }}</span>
+            </div>
+            {{ end }}
+            {{ if .Longitude }}
+            <div class="info-item">
+              <span class="info-label">经度</span>
+              <span class="info-value">{{ .Longitude }}</span>
+            </div>
+            {{ end }}
+            {{ if .Timezone }}
+            <div class="info-item">
+              <span class="info-label">时区</span>
+              <span class="info-value">{{ .Timezone }}</span>
+            </div>
+            {{ end }}
+            {{ if .ASN }}
+            <div class="info-item">
+              <span class="info-label">ASN</span>
+              <span class="info-value">{{ .ASN }}</span>
+            </div>
+            {{ end }}
+            {{ if .ISP }}
+            <div class="info-item">
+              <span class="info-label">服务商</span>
+              <span class="info-value">{{ .ISP }}</span>
+            </div>
+            {{ end }}
+            {{ if .ORG }}
+            <div class="info-item">
+              <span class="info-label">所属组织</span>
+              <span class="info-value">{{ .ORG }}</span>
+            </div>
+            {{ end }}
+            {{ if .ConnectionType }}
+            <div class="info-item">
+              <span class="info-label">网络类型</span>
+              <span class="info-value">{{ .ConnectionType }}</span>
+            </div>
+            {{ end }}
+            {{ if .Hostname }}
+            <div class="info-item">
+              <span class="info-label">主机名</span>
+              <span class="info-value">{{ .Hostname }}</span>
+            </div>
+            {{ end }}
+          </div>
+
+          <!-- 地图和捐助区域 -->
+          <div class="location-section">
+            {{ if and .Latitude .Longitude }}
+            <button class="map-btn" onclick="showMap()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              查看位置地图
+            </button>
+            {{ end }}
             
+            {{ if .Sponsor }}
+            <div class="sponsor-section">
+              <a href="https://donate.stripe.com/28obMffW78Pogb6145" target="_blank" class="sponsor-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                </svg>
+                支持项目
+              </a>
+              <p class="sponsor-text">本站由 <a href="https://www.nange.cn" target="_blank">楠格</a> 运营维护</p>
+            </div>
             {{ end }}
           </div>
         </div>
-        <!-- COLUMN 2 -->
-        <div class="pure-u-1 pure-u-md-1-2">
-          <div class="l-box">
-            <h2>以命令行的方式使用</h2>
-            <div class="pure-form">
-              <!-- COMMAND WIDGET -->
-              <div class="input-buttons">
-                <button
-                  name="ip"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  ip
-                </button>
-                <button
-                  name="country"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  country
-                </button>
-                <button
-                  name="region"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  region
-                </button>
-                <button
-                  name="city"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  city
-                </button>
-                <button
-                  name="asn"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  asn
-                </button>
-                <button
-                  name="isp"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  isp
-                </button>
-                <button
-                  name="org"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  org
-                </button>
-                <button
-                  name="ua"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  ua
-                </button>
-                <button
-                  name="json"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  json
-                </button>
-                <button
-                  name="port"
-                  class="pure-button widget-select"
-                  onclick="changeInput(this.name, this)"
-                >
-                  port
-                </button>
-                <input
-                  id="portInput"
-                  type="number"
-                  min="1"
-                  max="40000"
-                  value="8080"
-                  class="narrow-input pure-input"
-                  placeholder="8080"
-                  onchange="updatePort(this.value)"
-                />
-              </div>
-              <div class="widgetbox input">
-                <code id="command"></code>
-              </div>
-              <div id="output" class="widgetbox output"></div>
 
-              <form class="pure-form input-buttons">
-                <fieldset>
-                  <label for="ipInput">
-                    查询其它 IP（可选）
-                    <input
-                      id="ipInput"
-                      class=""
-                      type="text"
-                      placeholder="输入 IP 查询"
-                      onkeyup="updateIP(this.value)"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    class="pure-button"
-                    onclick="navigate()"
-                  >
-                    查询
-                  </button>
-                </fieldset>
-              </form>
-            </div>
-            <span>
-              本站数据由<a href="https://www.maxmind.com" target="_blank">MaxMind</a>和<a href="https://www.cz88.net" target="_blank">纯真CZ88</a>提供支持。
-            </span>
+        <!-- 右侧 JSON 预览框 -->
+        <div class="json-panel">
+          <div class="panel-header">
+            <h2>JSON 响应</h2>
+            <button class="copy-btn" onclick="copyJSON()">复制</button>
           </div>
+          <div class="json-container">
+            <pre id="jsonOutput" class="json-content">{{ .JSON }}</pre>
+          </div>
+
+          <!-- API 使用说明 -->
+          <div class="api-section">
+            <h3>API 使用</h3>
+            <div class="api-examples">
+              <div class="api-item">
+                <span class="api-label">获取完整信息:</span>
+                <code class="api-code">curl {{ .Host }}/json</code>
+              </div>
+              <div class="api-item">
+                <span class="api-label">查询指定 IP:</span>
+                <code class="api-code">curl {{ .Host }}/json?ip=8.8.8.8</code>
+              </div>
+              <div class="api-item">
+                <span class="api-label">指定语言 (中文):</span>
+                <code class="api-code">curl {{ .Host }}/json?lang=zh</code>
+              </div>
+              <div class="api-item">
+                <span class="api-label">指定语言 (英文):</span>
+                <code class="api-code">curl {{ .Host }}/json?lang=en</code>
+              </div>
+              <div class="api-item">
+                <span class="api-label">组合参数:</span>
+                <code class="api-code">curl {{ .Host }}/json?ip=8.8.8.8&lang=en</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部信息 -->
+      <footer class="footer">
+        <p>
+          数据来源: <a href="https://www.maxmind.com" target="_blank">MaxMind</a> · 
+          <a href="https://www.cz88.net" target="_blank">纯真CZ88</a>
+        </p>
+      </footer>
+
+      <!-- 地图模态框 -->
+      <div id="mapModal" class="map-modal" onclick="closeMap()">
+        <div class="map-container" onclick="event.stopPropagation()">
+          <div class="map-header">
+            <h3>IP 位置地图</h3>
+            <button class="close-btn" onclick="closeMap()">&times;</button>
+          </div>
+          <div id="mapFrame" class="map-frame"></div>
         </div>
       </div>
     </div>

@@ -2,93 +2,178 @@
   let host = "{{ .Host }}";
   let jsonObj = "{{ .JSON }}";
   let data = JSON.parse(jsonObj);
-  let tool = "curl";
-  let commandBox, widgetBox, compositePath, commandStr;
-  let path
-  let ipQuery, portQuery
-  let ipCheckBox, portCheckBox, portInput
-  let ip = ''
+  let ip = '';
+  let ipQuery = '';
 
   window.onload = (event) => {
-     commandBox = document.getElementById('command');
-     widgetBox = document.getElementById('output');
-     ipCheckBox = document.getElementById('ipCheckBox')
-     portCheckBox = document.getElementById('portCheckBox')
-     portInput = document.getElementById('portInput')
-     reset()
-     setcommdStr()
-     changeInput("ip")
+    // 格式化 JSON 显示
+    formatJSON();
+    // 检查并优化 IP 显示
+    optimizeIPDisplay();
   }
 
-  function reset() {
-    path = '';
-    ipQuery = '';
-    portQuery = '';
-  }
-
-  function setcommdStr() {
-    compositePath = `${path}${portQuery}${ipQuery}`;
-    commandStr = `${tool} ${host}/${compositePath}`;
-    commandBox.innerText = commandStr;
-  }
-
-  function changeInput(input, button) {
-    path = input
-    portQuery = ""
-    portInput.classList.add("hidden");
-    switch(path) {
-      case "json":
-        output.innerText = jsonObj
-        break
-      case "country_code":
-        output.innerText = data["country_code"]
-        break
-      case "connection_type":
-        output.innerText = data["connection_type"]
-        break
-     case "ua":
-        output.innerText = data["user_agent"]
-        break
-      case "port":
-        portInput.classList.remove("hidden");
-        path = "port";
-        output.innerText = "{}";
-        let currentPort = document.querySelector("#portInput").value;
-        updatePort(currentPort);
-        break
-      case "ip":
-        output.innerText = data["ip"]
-        path = ""
-        break
-      default:
-        output.innerText = data[path]
-    }
-    setcommdStr();
-
-    // set button selected
-    if (button) {
-      allButtons = document.querySelectorAll(('button.selected'));
-      allButtons.forEach((btn) => {btn.classList.remove("selected")})
-
-      button.classList.add("selected");
+  function optimizeIPDisplay() {
+    const ipValueElement = document.querySelector('.ip-value');
+    if (ipValueElement) {
+      const ipText = ipValueElement.textContent;
+      
+      // 检测 IPv6 地址
+      if (ipText.includes(':') && ipText.length > 15) {
+        ipValueElement.classList.add('ipv6');
+      }
+      
+      // 检测超长 IP 地址
+      if (ipText.length > 20) {
+        ipValueElement.style.fontSize = '1.2rem';
+        ipValueElement.style.letterSpacing = '0.2px';
+      }
     }
   }
 
-  function navigate(event) {
-    console.log("navigate", compositePath)
-    window.location = compositePath
+  function formatJSON() {
+    const jsonOutput = document.getElementById('jsonOutput');
+    if (jsonOutput) {
+      try {
+        const formatted = JSON.stringify(JSON.parse(jsonObj), null, 2);
+        const highlighted = syntaxHighlight(formatted);
+        jsonOutput.innerHTML = highlighted;
+      } catch (e) {
+        jsonOutput.textContent = jsonObj;
+      }
+    }
   }
 
-  function updatePort(value) {
-    port = value
-    portQuery = `/${port}`
-    setcommdStr()
+  function syntaxHighlight(json) {
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+      var cls = 'json-number';
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          cls = 'json-key';
+        } else {
+          cls = 'json-string';
+        }
+      } else if (/true|false/.test(match)) {
+        cls = 'json-boolean';
+      } else if (/null/.test(match)) {
+        cls = 'json-null';
+      }
+      return '<span class="' + cls + '">' + match + '</span>';
+    });
+  }
+
+  function copyJSON() {
+    // 获取原始 JSON 内容，不包含 HTML 标签
+    const jsonContent = JSON.stringify(JSON.parse(jsonObj), null, 2);
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(jsonContent).then(() => {
+        showCopySuccess();
+      }).catch(() => {
+        fallbackCopy(jsonContent);
+      });
+    } else {
+      fallbackCopy(jsonContent);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      document.execCommand('copy');
+      showCopySuccess();
+    } catch (err) {
+      console.error('复制失败:', err);
+    }
+    
+    document.body.removeChild(textArea);
+  }
+
+  function showCopySuccess() {
+    const copyBtn = document.querySelector('.copy-btn');
+    const originalText = copyBtn.textContent;
+    copyBtn.textContent = '已复制!';
+    copyBtn.style.background = '#48bb78';
+    
+    setTimeout(() => {
+      copyBtn.textContent = originalText;
+      copyBtn.style.background = '';
+    }, 2000);
+  }
+
+  function navigate() {
+    const ipInput = document.getElementById('ipInput');
+    const inputValue = ipInput.value.trim();
+    
+    if (inputValue) {
+      // 简单的 IP 地址验证
+      const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+      const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+      
+      if (ipRegex.test(inputValue) || ipv6Regex.test(inputValue)) {
+        window.location.href = `/?ip=${encodeURIComponent(inputValue)}`;
+      } else {
+        alert('请输入有效的 IP 地址');
+        ipInput.focus();
+      }
+    } else {
+      alert('请输入 IP 地址');
+      ipInput.focus();
+    }
   }
 
   function updateIP(value) {
-    ip = value
-    ipQuery = `?ip=${ip}`;
-    setcommdStr()
-    changeInput("ip", null)
+    ip = value.trim();
   }
+
+  // 显示地图
+  function showMap() {
+    const modal = document.getElementById('mapModal');
+    const mapFrame = document.getElementById('mapFrame');
+    
+    if (data.latitude && data.longitude) {
+      // 使用 OpenStreetMap 嵌入地图
+      const lat = data.latitude;
+      const lon = data.longitude;
+      const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.01},${lat-0.01},${lon+0.01},${lat+0.01}&layer=mapnik&marker=${lat},${lon}`;
+      
+      mapFrame.innerHTML = `<iframe src="${mapUrl}" width="100%" height="100%" frameborder="0"></iframe>`;
+      modal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  // 关闭地图
+  function closeMap() {
+    const modal = document.getElementById('mapModal');
+    modal.classList.remove('show');
+    document.body.style.overflow = 'auto';
+  }
+
+  // 回车键查询
+  document.addEventListener('DOMContentLoaded', function() {
+    const ipInput = document.getElementById('ipInput');
+    if (ipInput) {
+      ipInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          navigate();
+        }
+      });
+    }
+
+    // ESC 键关闭地图
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeMap();
+      }
+    });
+  });
 </script>
