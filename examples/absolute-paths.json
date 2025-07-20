@@ -8,8 +8,7 @@
   ],
   "enable_reverse_lookup": true,
   "enable_port_lookup": true,
-  "show_sponsor_logo": true,
-  "enable_profiling": true,
+  "enable_profiling": false,
   "databases": {
     "country": "/Users/Me/GitHub/GeoIP/data/GeoLite2-Country.mmdb",
     "city": "/Users/Me/GitHub/GeoIP/data/GeoLite2-City.mmdb",

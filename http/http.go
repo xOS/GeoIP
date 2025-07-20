@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -33,7 +34,7 @@ type Server struct {
 	cache      *Cache
 	gr         geo.Reader
 	profile    bool
-	Sponsor    bool
+
 }
 
 type Response struct {
@@ -764,12 +765,55 @@ func (s *Server) cacheHandler(w http.ResponseWriter, r *http.Request) *appError 
 	return nil
 }
 
+func (s *Server) StaticFileHandler(w http.ResponseWriter, r *http.Request) *appError {
+	// 获取请求的文件名
+	filename := r.URL.Path[1:] // 移除开头的 "/"
+	if filename == "" {
+		return notFound(nil)
+	}
+	
+	// 构建文件路径
+	filePath := s.Template + "/" + filename
+	
+	// 检查文件是否存在
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return notFound(nil)
+	}
+	
+	// 设置适当的 Content-Type
+	switch filepath.Ext(filename) {
+	case ".ico":
+		w.Header().Set("Content-Type", "image/x-icon")
+	case ".png":
+		w.Header().Set("Content-Type", "image/png")
+	case ".jpg", ".jpeg":
+		w.Header().Set("Content-Type", "image/jpeg")
+	case ".gif":
+		w.Header().Set("Content-Type", "image/gif")
+	case ".svg":
+		w.Header().Set("Content-Type", "image/svg+xml")
+	case ".css":
+		w.Header().Set("Content-Type", "text/css")
+	case ".js":
+		w.Header().Set("Content-Type", "application/javascript")
+	default:
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+	
+	// 设置缓存头
+	w.Header().Set("Cache-Control", "public, max-age=86400") // 缓存1天
+	
+	// 提供文件
+	http.ServeFile(w, r, filePath)
+	return nil
+}
+
 func (s *Server) DefaultHandler(w http.ResponseWriter, r *http.Request) *appError {
 	response, err := s.newResponse(r)
 	if err != nil {
 		return badRequest(err).WithMessage(err.Error())
 	}
-	t, err := template.ParseGlob(s.Template + "/*")
+	t, err := template.ParseFiles(s.Template + "/index.html", s.Template + "/script.html", s.Template + "/styles.html")
 	if err != nil {
 		return internalServerError(err)
 	}
@@ -787,7 +831,6 @@ func (s *Server) DefaultHandler(w http.ResponseWriter, r *http.Request) *appErro
 		BoxLonRight  float64
 		JSON         string
 		Port         bool
-		Sponsor      bool
 	}{
 		response,
 		r.Host,
@@ -797,9 +840,9 @@ func (s *Server) DefaultHandler(w http.ResponseWriter, r *http.Request) *appErro
 		response.Longitude + 0.05,
 		string(json),
 		s.LookupPort != nil,
-		s.Sponsor,
 	}
-	if err := t.Execute(w, &data); err != nil {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := t.ExecuteTemplate(w, "index.html", &data); err != nil {
 		return internalServerError(err)
 	}
 	return nil
@@ -896,6 +939,11 @@ func (s *Server) Handler() http.Handler {
 		r.Route("GET", "/provider", s.CLIProviderHandler)
 		r.Route("GET", "/fraud_score", s.CLIFraudScoreHandler)
 		r.Route("GET", "/ua", s.CLIUAHandler)
+	}
+
+	// Static files
+	if s.Template != "" {
+		r.Route("GET", "/favicon.ico", s.StaticFileHandler)
 	}
 
 	// Browser

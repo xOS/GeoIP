@@ -90,7 +90,7 @@
   .main-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 2rem 2rem 0rem 2rem;
     position: relative;
     z-index: 1;
   }
@@ -211,6 +211,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
     margin-bottom: 3rem;
+    align-items: start;
   }
 
   /* 面板通用样式 */
@@ -222,10 +223,19 @@
     padding: 1.5rem;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(59, 130, 246, 0.2);
-    min-height: fit-content;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+  }
+
+  /* 信息面板独立高度 */
+  .info-panel {
+    height: fit-content;
+  }
+
+  /* JSON 面板保持最小高度 */
+  .json-panel {
+    min-height: 400px;
   }
 
   .info-panel::before,
@@ -347,6 +357,13 @@
     gap: 0.75rem;
   }
 
+  /* 按钮行布局 */
+  .button-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
   .map-btn {
     display: flex;
     align-items: center;
@@ -360,7 +377,7 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
-    width: 100%;
+    flex: 1;
     justify-content: center;
     border: 1px solid rgba(59, 130, 246, 0.3);
   }
@@ -391,6 +408,10 @@
     font-weight: 500;
     transition: all 0.3s ease;
     border: 1px solid rgba(245, 158, 11, 0.3);
+    flex: 1;
+    justify-content: center;
+    flex: 1;
+    justify-content: center;
   }
 
   .sponsor-btn:hover {
@@ -413,6 +434,19 @@
   .sponsor-text a:hover {
     text-decoration: underline;
     color: #60a5fa;
+  }
+
+  /* 响应式设计 - 小屏幕上按钮垂直排列 */
+  @media (max-width: 480px) {
+    .button-row {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .map-btn,
+    .sponsor-btn {
+      width: 100%;
+    }
   }
 
   /* JSON 面板 */
@@ -663,6 +697,11 @@
 
     .top-query-section {
       max-width: 100%;
+    }
+
+    .button-row {
+      flex-direction: column;
+      gap: 0.5rem;
     }
 
     .map-container {

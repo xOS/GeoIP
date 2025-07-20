@@ -50,7 +50,7 @@ func main() {
 	template := flag.String("t", "html", "Path to template dir")
 	cacheSize := flag.Int("C", 0, "Size of response cache. Set to 0 to disable")
 	profile := flag.Bool("P", true, "Enables profiling handlers")
-	sponsor := flag.Bool("s", true, "Show sponsor logo")
+
 	var headers multiValueFlag
 	flag.Var(&headers, "H", "Header to trust for remote IP, if present (e.g. X-Real-IP)")
 	flag.Parse()
@@ -78,7 +78,7 @@ func main() {
 	// Override config with command line flags if provided
 	overrideConfigWithFlags(config, countryFile, cityFile, asnFile, ispFile, connFile,
 		ip2proxyFile, qqwryFile, cz88v4File, cz88v6File, hybridMode, autoDetect, listen, template,
-		reverseLookup, portLookup, cacheSize, profile, sponsor, headers)
+		reverseLookup, portLookup, cacheSize, profile, headers)
 
 	// Validate configuration
 	if err := config.Validate(); err != nil {
@@ -172,6 +172,7 @@ func main() {
 	server := http.New(r, cache, config.EnableProfiling)
 	server.IPHeaders = config.TrustedHeaders
 
+
 	if _, err := os.Stat(config.TemplateDir); err == nil {
 		server.Template = config.TemplateDir
 	} else {
@@ -186,10 +187,7 @@ func main() {
 		log.Println("Enabling port lookup")
 		server.LookupPort = iputil.LookupPort
 	}
-	if config.ShowSponsorLogo {
-		log.Println("Enabling sponsor logo")
-		server.Sponsor = config.ShowSponsorLogo
-	}
+
 	if len(config.TrustedHeaders) > 0 {
 		log.Printf("Trusting remote IP from header(s): %s", strings.Join(config.TrustedHeaders, ", "))
 	}
