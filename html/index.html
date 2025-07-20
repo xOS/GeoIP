@@ -6,8 +6,7 @@
   <title>你的 IP | 楠格</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="{{ .Host }} • IP 地址查询 &mdash; 查询IP信息的最佳工具。" />
-  <link rel="icon" href="https://static.nange.cn/image/others/ipinfo.ico" type="image/x-icon" />
-  <link rel="canonical" href="https://static.nange.cn/" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <link rel="canonical" href="https://www.openstreetmap.org/" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -150,27 +149,24 @@
 
         <!-- 地图和捐助区域 -->
         <div class="location-section">
-          {{ if and .Latitude .Longitude }}
-          <button class="map-btn" onclick="showMap()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-            </svg>
-            查看位置地图
-          </button>
-          {{ end }}
+          <div class="button-row">
+            {{ if and .Latitude .Longitude }}
+            <button class="map-btn" onclick="showMap()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+              </svg>
+              查看地图
+            </button>
+            {{ end }}
 
-          {{ if .Sponsor }}
-          <div class="sponsor-section">
             <a href="https://donate.stripe.com/28obMffW78Pogb6145" target="_blank" class="sponsor-btn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
               </svg>
               支持项目
             </a>
-            <p class="sponsor-text">本站由 <a href="https://www.nange.cn" target="_blank">楠格</a> 运营维护</p>
           </div>
-          {{ end }}
         </div>
       </div>
 
@@ -216,9 +212,10 @@
     <!-- 底部信息 -->
     <footer class="footer">
       <p>
-        数据来源: <a href="https://www.maxmind.com" target="_blank">MaxMind</a> ·
-        <a href="https://www.cz88.net" target="_blank">纯真CZ88</a>
+        本站由 <a href="https://www.maxmind.com" target="_blank">MaxMind</a> ·
+        <a href="https://www.cz88.net" target="_blank">纯真CZ88</a> 提供数据支持
       </p>
+      <p>本站由 <a href="https://www.nange.cn" target="_blank">楠格</a> 运营维护</p>
     </footer>
 
     <!-- 地图模态框 -->

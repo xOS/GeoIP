@@ -56,7 +56,6 @@ https://ifconfig.co.
   ],
   "enable_reverse_lookup": true,
   "enable_port_lookup": true,
-  "show_sponsor_logo": true,
   "enable_profiling": true,
   "databases": {
     "country": "../data/GeoLite2-Country.mmdb",

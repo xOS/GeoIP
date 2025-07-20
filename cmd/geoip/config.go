@@ -22,7 +22,7 @@ type Config struct {
 	// Features
 	EnableReverseLookup bool `json:"enable_reverse_lookup,omitempty"`
 	EnablePortLookup    bool `json:"enable_port_lookup,omitempty"`
-	ShowSponsorLogo     bool `json:"show_sponsor_logo,omitempty"`
+
 	EnableProfiling     bool `json:"enable_profiling,omitempty"`
 
 	// Translation settings
@@ -67,7 +67,6 @@ func DefaultConfig() *Config {
 		CacheSize:           0,
 		EnableReverseLookup: true,
 		EnablePortLookup:    true,
-		ShowSponsorLogo:     true,
 		EnableProfiling:     true,
 		HybridMode:          false,
 		AutoDetect:          false,
@@ -141,7 +140,6 @@ func generateExampleConfig(filename string) error {
 		TrustedHeaders:      []string{"X-Real-IP", "X-Forwarded-For"},
 		EnableReverseLookup: true,
 		EnablePortLookup:    true,
-		ShowSponsorLogo:     true,
 		EnableProfiling:     true,
 		TranslationFile:     "translations.json",
 		HybridMode:          true,
@@ -166,7 +164,7 @@ func generateExampleConfig(filename string) error {
 // overrideConfigWithFlags overrides config values with command line flags when provided
 func overrideConfigWithFlags(config *Config, countryFile, cityFile, asnFile, ispFile, connFile,
 	ip2proxyFile, qqwryFile, cz88v4File, cz88v6File *string, hybridMode, autoDetect *bool, listen, template *string,
-	reverseLookup, portLookup *bool, cacheSize *int, profile, sponsor *bool, headers multiValueFlag) {
+	reverseLookup, portLookup *bool, cacheSize *int, profile *bool, headers multiValueFlag) {
 
 	// Override database paths if flags are provided
 	if *countryFile != "" {
@@ -224,9 +222,6 @@ func overrideConfigWithFlags(config *Config, countryFile, cityFile, asnFile, isp
 	}
 	if flag.Lookup("P").Value.String() == "false" {
 		config.EnableProfiling = *profile
-	}
-	if flag.Lookup("s").Value.String() == "false" {
-		config.ShowSponsorLogo = *sponsor
 	}
 
 	// Override headers if provided
