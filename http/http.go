@@ -27,14 +27,14 @@ const (
 )
 
 type Server struct {
-	Template   string
-	IPHeaders  []string
-	LookupAddr func(net.IP) (string, error)
-	LookupPort func(net.IP, uint64) error
-	cache      *Cache
-	gr         geo.Reader
-	profile    bool
-
+	Template      string
+	IPHeaders     []string
+	LookupAddr    func(net.IP) (string, error)
+	LookupPort    func(net.IP, uint64) error
+	cache         *Cache
+	gr            geo.Reader
+	profile       bool
+	AllowCustomIP bool
 }
 
 type Response struct {
@@ -81,8 +81,8 @@ type PortResponse struct {
 	Reachable bool   `json:"reachable"`
 }
 
-func New(db geo.Reader, cache *Cache, profile bool) *Server {
-	return &Server{cache: cache, gr: db, profile: profile}
+func New(db geo.Reader, cache *Cache, profile bool, allowCustomIP bool) *Server {
+	return &Server{cache: cache, gr: db, profile: profile, AllowCustomIP: allowCustomIP}
 }
 
 func ipFromForwardedForHeader(v string) string {
@@ -136,7 +136,7 @@ func userAgentFromRequest(r *http.Request) string {
 }
 
 func (s *Server) newResponse(r *http.Request) (Response, error) {
-	ip, err := ipFromRequest(s.IPHeaders, r, true)
+	ip, err := ipFromRequest(s.IPHeaders, r, s.AllowCustomIP)
 	if err != nil {
 		return Response{}, err
 	}
@@ -509,7 +509,7 @@ func (s *Server) newPortResponse(r *http.Request) (PortResponse, error) {
 	if err != nil || port < 1 || port > 65535 {
 		return PortResponse{Port: port}, fmt.Errorf("invalid port: %s", lastElement)
 	}
-	ip, err := ipFromRequest(s.IPHeaders, r, false)
+	ip, err := ipFromRequest(s.IPHeaders, r, s.AllowCustomIP)
 	if err != nil {
 		return PortResponse{Port: port}, err
 	}
@@ -771,15 +771,15 @@ func (s *Server) StaticFileHandler(w http.ResponseWriter, r *http.Request) *appE
 	if filename == "" {
 		return notFound(nil)
 	}
-	
+
 	// 构建文件路径
 	filePath := s.Template + "/" + filename
-	
+
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return notFound(nil)
 	}
-	
+
 	// 设置适当的 Content-Type
 	switch filepath.Ext(filename) {
 	case ".ico":
@@ -799,10 +799,10 @@ func (s *Server) StaticFileHandler(w http.ResponseWriter, r *http.Request) *appE
 	default:
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
-	
+
 	// 设置缓存头
 	w.Header().Set("Cache-Control", "public, max-age=86400") // 缓存1天
-	
+
 	// 提供文件
 	http.ServeFile(w, r, filePath)
 	return nil
@@ -813,7 +813,7 @@ func (s *Server) DefaultHandler(w http.ResponseWriter, r *http.Request) *appErro
 	if err != nil {
 		return badRequest(err).WithMessage(err.Error())
 	}
-	t, err := template.ParseFiles(s.Template + "/index.html", s.Template + "/script.html", s.Template + "/styles.html")
+	t, err := template.ParseFiles(s.Template+"/index.html", s.Template+"/script.html", s.Template+"/styles.html")
 	if err != nil {
 		return internalServerError(err)
 	}

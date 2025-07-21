@@ -23,7 +23,7 @@ type Config struct {
 	EnableReverseLookup bool `json:"enable_reverse_lookup,omitempty"`
 	EnablePortLookup    bool `json:"enable_port_lookup,omitempty"`
 
-	EnableProfiling     bool `json:"enable_profiling,omitempty"`
+	EnableProfiling bool `json:"enable_profiling,omitempty"`
 
 	// Translation settings
 	TranslationFile string `json:"translation_file,omitempty"`
@@ -32,8 +32,9 @@ type Config struct {
 	Databases DatabaseConfig `json:"databases"`
 
 	// Modes
-	HybridMode bool `json:"hybrid_mode,omitempty"`
-	AutoDetect bool `json:"auto_detect,omitempty"`
+	HybridMode    bool `json:"hybrid_mode,omitempty"`
+	AutoDetect    bool `json:"auto_detect,omitempty"`
+	AllowCustomIP bool `json:"allow_custom_ip,omitempty"`
 }
 
 // DatabaseConfig holds all database file paths

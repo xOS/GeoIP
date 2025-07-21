@@ -169,9 +169,8 @@ func main() {
 	}
 
 	cache := http.NewCache(config.CacheSize)
-	server := http.New(r, cache, config.EnableProfiling)
+	server := http.New(r, cache, config.EnableProfiling, config.AllowCustomIP)
 	server.IPHeaders = config.TrustedHeaders
-
 
 	if _, err := os.Stat(config.TemplateDir); err == nil {
 		server.Template = config.TemplateDir
@@ -186,6 +185,12 @@ func main() {
 	if config.EnablePortLookup {
 		log.Println("Enabling port lookup")
 		server.LookupPort = iputil.LookupPort
+	}
+
+	if config.AllowCustomIP {
+		log.Printf("Enabling allow_custom_ip")
+	} else {
+		log.Printf("Disabling allow_custom_ip")
 	}
 
 	if len(config.TrustedHeaders) > 0 {
