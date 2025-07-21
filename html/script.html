@@ -6,22 +6,50 @@
   let ipQuery = '';
 
   window.onload = (event) => {
+    // 初始化主题
+    initTheme();
     // 格式化 JSON 显示
     formatJSON();
     // 检查并优化 IP 显示
     optimizeIPDisplay();
+    // 高亮 API 代码
+    highlightApiCode();
+  }
+
+  // 主题管理
+  function initTheme() {
+    // 默认使用亮色主题
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setTheme(savedTheme);
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+  }
+
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+
+    // 更新主题切换按钮的提示文本
+    const themeBtn = document.querySelector('.theme-toggle-btn');
+    if (themeBtn) {
+      themeBtn.title = theme === 'light' ? '切换到暗色模式' : '切换到亮色模式';
+    }
   }
 
   function optimizeIPDisplay() {
     const ipValueElement = document.querySelector('.ip-value');
     if (ipValueElement) {
       const ipText = ipValueElement.textContent;
-      
+
       // 检测 IPv6 地址
       if (ipText.includes(':') && ipText.length > 15) {
         ipValueElement.classList.add('ipv6');
       }
-      
+
       // 检测超长 IP 地址
       if (ipText.length > 20) {
         ipValueElement.style.fontSize = '1.2rem';
@@ -62,6 +90,11 @@
     });
   }
 
+  // 暂时禁用API代码高亮，直接在HTML中处理
+  function highlightApiCode() {
+    // 不做任何处理，保持原始HTML内容
+  }
+
   function copyJSON() {
     // 获取原始 JSON 内容，不包含 HTML 标签
     const jsonContent = JSON.stringify(JSON.parse(jsonObj), null, 2);
@@ -99,13 +132,23 @@
 
   function showCopySuccess() {
     const copyBtn = document.querySelector('.copy-btn');
-    const originalText = copyBtn.textContent;
-    copyBtn.textContent = '已复制!';
-    copyBtn.style.background = '#48bb78';
-    
+    const originalHTML = copyBtn.innerHTML;
+
+    // 创建成功提示图标
+    const successIcon = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20,6 9,17 4,12"/>
+      </svg>
+    `;
+
+    copyBtn.innerHTML = successIcon;
+    copyBtn.style.background = '#10b981';
+    copyBtn.title = '已复制!';
+
     setTimeout(() => {
-      copyBtn.textContent = originalText;
+      copyBtn.innerHTML = originalHTML;
       copyBtn.style.background = '';
+      copyBtn.title = '复制 JSON';
     }, 2000);
   }
 
