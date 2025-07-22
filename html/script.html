@@ -98,7 +98,7 @@
   function copyJSON() {
     // 获取原始 JSON 内容，不包含 HTML 标签
     const jsonContent = JSON.stringify(JSON.parse(jsonObj), null, 2);
-    
+
     if (navigator.clipboard) {
       navigator.clipboard.writeText(jsonContent).then(() => {
         showCopySuccess();
@@ -119,14 +119,14 @@
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
-    
+
     try {
       document.execCommand('copy');
       showCopySuccess();
     } catch (err) {
       console.error('复制失败:', err);
     }
-    
+
     document.body.removeChild(textArea);
   }
 
@@ -155,12 +155,12 @@
   function navigate() {
     const ipInput = document.getElementById('ipInput');
     const inputValue = ipInput.value.trim();
-    
+
     if (inputValue) {
       // 简单的 IP 地址验证
       const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
       const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
-      
+
       if (ipRegex.test(inputValue) || ipv6Regex.test(inputValue)) {
         window.location.href = `/?ip=${encodeURIComponent(inputValue)}`;
       } else {
@@ -177,35 +177,390 @@
     ip = value.trim();
   }
 
-  // 显示地图
+  // 全局标志和缓存
+  let isCreatingMap = false;
+  let mapLibraryLoaded = false;
+  let mapLibraryLoading = false;
+
+  // 预加载地图库（可选，在页面空闲时加载）
+  function preloadMapLibrary() {
+    if (!window.maplibregl && !mapLibraryLoading && !mapLibraryLoaded) {
+      mapLibraryLoading = true;
+      const script = document.createElement('script');
+      script.src = 'https://s4.zstatic.net/ajax/libs/maplibre-gl/5.6.1/maplibre-gl.min.js';
+      script.onload = () => {
+        mapLibraryLoaded = true;
+        mapLibraryLoading = false;
+        console.log('MapLibre GL JS 预加载完成');
+      };
+      script.onerror = () => {
+        mapLibraryLoading = false;
+        console.error('MapLibre GL JS 预加载失败');
+      };
+      document.head.appendChild(script);
+    }
+  }
+
+  // 页面空闲时预加载地图库
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => {
+      preloadMapLibrary();
+    }, { timeout: 5000 });
+  } else {
+    // 备用方案：延迟3秒后加载
+    setTimeout(preloadMapLibrary, 3000);
+  }
+
+  // 显示地图（优化版）
   function showMap() {
     const modal = document.getElementById('mapModal');
     const mapFrame = document.getElementById('mapFrame');
-    
-    if (data.latitude && data.longitude) {
-      // 使用 OpenStreetMap 嵌入地图
-      const lat = data.latitude;
-      const lon = data.longitude;
-      const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.01},${lat-0.01},${lon+0.01},${lat+0.01}&layer=mapnik&marker=${lat},${lon}`;
-      
-      mapFrame.innerHTML = `<iframe src="${mapUrl}" width="100%" height="100%" frameborder="0"></iframe>`;
+
+    if (data.latitude && data.longitude && !isCreatingMap) {
+      const lat = parseFloat(data.latitude);
+      const lon = parseFloat(data.longitude);
+
+      // 设置创建标志
+      isCreatingMap = true;
+
+      // 立即显示模态框，提升用户体验
       modal.classList.add('show');
       document.body.style.overflow = 'hidden';
+
+      // 显示加载指示器
+      mapFrame.innerHTML = '<div class="map-loading"><div class="loading-spinner"></div><p>地图加载中...</p></div>';
+
+      // 动态加载 MapLibre GL JS
+      if (!window.maplibregl) {
+        if (!mapLibraryLoading) {
+          mapLibraryLoading = true;
+          const script = document.createElement('script');
+          script.src = 'https://s4.zstatic.net/ajax/libs/maplibre-gl/5.6.1/maplibre-gl.min.js';
+          script.onload = () => {
+            mapLibraryLoaded = true;
+            mapLibraryLoading = false;
+            createMapLibreMap(lat, lon, mapFrame);
+            isCreatingMap = false;
+          };
+          script.onerror = () => {
+            mapLibraryLoading = false;
+            isCreatingMap = false;
+            mapFrame.innerHTML = '<div class="map-error">地图加载失败，请重试</div>';
+          };
+          document.head.appendChild(script);
+        }
+      } else {
+        createMapLibreMap(lat, lon, mapFrame);
+        isCreatingMap = false;
+      }
     }
   }
+
+  // MapTiler Streets v2 地图样式配置
+  const mapStyle = 'https://api.maptiler.com/maps/streets-v2/style.json?key=TffR4RG6Do9Ng4PyZ0Zf';
+
+  // 缓存透明图像数据，避免重复创建
+  let cachedTransparentImage = null;
+
+  function getTransparentImage() {
+    if (!cachedTransparentImage) {
+      const size = 16;
+      const data = new Uint8Array(size * size * 4);
+      // 所有像素都设置为透明 (RGBA: 0,0,0,0)
+      data.fill(0);
+
+      cachedTransparentImage = {
+        width: size,
+        height: size,
+        data: data
+      };
+    }
+    return cachedTransparentImage;
+  }
+
+  // 创建 MapLibre 地图（性能优化版）
+  function createMapLibreMap(lat, lon, container) {
+    // 防止重复创建地图
+    if (window.currentMap) {
+      console.log('地图已存在，跳过创建');
+      return;
+    }
+
+    // 清理之前的标记和弹窗
+    if (window.currentMarker) {
+      try {
+        window.currentMarker.remove();
+      } catch (e) {
+        console.log('清理标记时出错:', e);
+      }
+      window.currentMarker = null;
+    }
+    if (window.currentPopup) {
+      try {
+        window.currentPopup.remove();
+      } catch (e) {
+        console.log('清理弹窗时出错:', e);
+      }
+      window.currentPopup = null;
+    }
+
+    // 清空容器
+    container.innerHTML = '';
+
+    // 确保容器尺寸正确
+    container.style.width = '100%';
+    container.style.height = '100%';
+
+    try {
+      // 性能优化的地图配置（简化版）
+      const map = new maplibregl.Map({
+        container: container,
+        style: mapStyle,
+        center: [lon, lat],
+        zoom: 13,
+        attributionControl: true,
+        hash: false,
+        preserveDrawingBuffer: false, // 关闭绘制缓冲区以提升性能
+        antialias: false, // 关闭抗锯齿以提升性能
+        maxZoom: 16, // 限制最大缩放级别，避免过度详细
+        minZoom: 8, // 设置最小缩放级别
+        renderWorldCopies: false, // 不渲染世界副本
+        optimizeForTerrain: false, // 关闭地形优化
+        fadeDuration: 0, // 关闭淡入淡出动画
+        crossSourceCollisions: false // 关闭跨源碰撞检测
+      });
+
+      // 添加导航控件
+      map.addControl(new maplibregl.NavigationControl({
+        showCompass: false, // 隐藏指南针以减少渲染负担
+        showZoom: true
+      }), 'top-left');
+
+      // 添加全屏控件
+      map.addControl(new maplibregl.FullscreenControl(), 'top-left');
+
+      // 优化的缺失图像处理
+      map.on('styleimagemissing', (e) => {
+        try {
+          map.addImage(e.id, getTransparentImage());
+        } catch (imgError) {
+          console.log('添加占位图像失败:', imgError);
+        }
+      });
+
+      // 节流的样式数据处理
+      let styleDataTimeout;
+      map.on('styledata', () => {
+        clearTimeout(styleDataTimeout);
+        styleDataTimeout = setTimeout(() => {
+          try {
+            const style = map.getStyle();
+            if (style && style.layers) {
+              // 移除不需要的图层（交通、车站、3D建筑等）
+              const layersToRemove = [];
+              style.layers.forEach(layer => {
+                // 移除交通相关图层
+                if (layer.id.includes('traffic') || 
+                    layer.id.includes('transit') || 
+                    layer.id.includes('station') ||
+                    layer.id.includes('railway') ||
+                    layer.id.includes('subway') ||
+                    layer.id.includes('metro') ||
+                    layer.id.includes('bus') ||
+                    layer.id.includes('tram') ||
+                    layer.id.includes('ferry') ||
+                    // 移除3D建筑图层
+                    layer.type === 'fill-extrusion' ||
+                    layer.id.includes('building-3d') ||
+                    layer.id.includes('extrusion') ||
+                    layer.id.includes('3d') ||
+                    // 移除POI相关的复杂图层
+                    layer.id.includes('poi-transit') ||
+                    layer.id.includes('poi-railway') ||
+                    layer.id.includes('poi-bus') ||
+                    // 移除一些详细的标注图层
+                    (layer.type === 'symbol' && layer.id.includes('transit'))) {
+                  layersToRemove.push(layer.id);
+                }
+              });
+
+              // 批量移除图层
+              layersToRemove.forEach(layerId => {
+                try {
+                  if (map.getLayer(layerId)) {
+                    map.removeLayer(layerId);
+                    console.log(`已移除图层: ${layerId}`);
+                  }
+                } catch (removeError) {
+                  console.log(`移除图层 ${layerId} 时出错:`, removeError);
+                }
+              });
+
+              // 批量处理中文标签
+              const updates = [];
+              style.layers.forEach(layer => {
+                if (layer.layout && layer.layout['text-field'] && layer.type === 'symbol') {
+                  updates.push({
+                    id: layer.id,
+                    property: 'text-field',
+                    value: [
+                      'coalesce',
+                      ['get', 'name:zh'],
+                      ['get', 'name_zh'],
+                      ['get', 'name:zh-Hans'],
+                      ['get', 'name:zh-CN'],
+                      ['get', 'name_zh_cn'],
+                      ['get', 'name'],
+                      ['get', 'name:en']
+                    ]
+                  });
+                }
+              });
+
+              // 批量应用更新
+              updates.forEach(update => {
+                try {
+                  if (map.getLayer(update.id)) {
+                    map.setLayoutProperty(update.id, update.property, update.value);
+                  }
+                } catch (layerError) {
+                  console.log(`设置图层 ${update.id} 中文标签时出错:`, layerError);
+                }
+              });
+            }
+          } catch (e) {
+            console.log('设置中文标签时出错:', e);
+          }
+        }, 300); // 减少延迟时间
+      });
+
+      // 地图加载完成后的处理
+      map.on('load', () => {
+        console.log('MapLibre 地图加载完成');
+
+        // 使用 requestAnimationFrame 优化 DOM 操作
+        requestAnimationFrame(() => {
+          // 创建自定义标记元素
+          const markerElement = document.createElement('div');
+          markerElement.className = 'custom-marker';
+          markerElement.innerHTML = `
+            <div class="marker-pulse"></div>
+            <div class="marker-pin">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+            </div>
+          `;
+
+          // 创建并添加自定义标记
+          window.currentMarker = new maplibregl.Marker(markerElement)
+            .setLngLat([lon, lat])
+            .addTo(map);
+
+          // 创建弹窗内容（优化HTML结构）
+          const popupContent = document.createElement('div');
+          popupContent.className = 'map-popup';
+          popupContent.innerHTML = `
+            <h4>📍 IP 位置信息</h4>
+            <p><strong>IP:</strong> ${data.ip || 'N/A'}</p>
+            <p><strong>位置:</strong> ${data.city || 'N/A'}, ${data.country || 'N/A'}</p>
+            <p><strong>坐标:</strong> ${lat.toFixed(4)}, ${lon.toFixed(4)}</p>
+            ${data.isp ? `<p><strong>ISP:</strong> ${data.isp}</p>` : ''}
+          `;
+
+          // 添加位置信息弹窗
+          window.currentPopup = new maplibregl.Popup({
+            offset: [0, -50],
+            closeButton: true,
+            closeOnClick: false,
+            anchor: 'bottom'
+          })
+            .setLngLat([lon, lat])
+            .setDOMContent(popupContent) // 使用 DOM 内容而不是 HTML 字符串
+            .addTo(map);
+
+          // 优化的视图设置
+          setTimeout(() => {
+            try {
+              map.resize();
+              map.easeTo({ // 使用 easeTo 替代 flyTo 以提升性能
+                center: [lon, lat],
+                zoom: 14,
+                duration: 1000
+              });
+            } catch (resizeError) {
+              console.log('调整地图大小时出错:', resizeError);
+              map.setCenter([lon, lat]);
+              map.setZoom(14);
+            }
+          }, 100);
+        });
+      });
+
+      // 错误处理
+      map.on('error', (e) => {
+        console.error('地图加载错误:', e);
+      });
+
+      // 存储地图实例
+      window.currentMap = map;
+
+    } catch (error) {
+      console.error('创建地图时出错:', error);
+      isCreatingMap = false;
+    }
+  }
+
+
+
+
 
   // 关闭地图
   function closeMap() {
     const modal = document.getElementById('mapModal');
     modal.classList.remove('show');
     document.body.style.overflow = 'auto';
+
+    // 重置创建标志
+    isCreatingMap = false;
+
+    // 延迟清理，确保动画完成
+    setTimeout(() => {
+      try {
+        // 清理弹窗
+        if (window.currentPopup) {
+          window.currentPopup.remove();
+          window.currentPopup = null;
+        }
+
+        // 清理标记
+        if (window.currentMarker) {
+          window.currentMarker.remove();
+          window.currentMarker = null;
+        }
+
+        // 清理地图实例
+        if (window.currentMap) {
+          window.currentMap.remove();
+          window.currentMap = null;
+        }
+
+        // 清空容器
+        const mapFrame = document.getElementById('mapFrame');
+        if (mapFrame) {
+          mapFrame.innerHTML = '';
+        }
+      } catch (error) {
+        console.error('清理地图资源时出错:', error);
+      }
+    }, 300);
   }
 
   // 回车键查询
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     const ipInput = document.getElementById('ipInput');
     if (ipInput) {
-      ipInput.addEventListener('keypress', function(e) {
+      ipInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
           navigate();
         }
@@ -213,7 +568,7 @@
     }
 
     // ESC 键关闭地图
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         closeMap();
       }

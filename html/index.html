@@ -7,9 +7,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="{{ .Host }} • IP 地址查询 &mdash; 查询IP信息的最佳工具。" />
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
-  <link rel="preconnect" href="https://www.openstreetmap.org/" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://s4.zstatic.net/ajax/libs/maplibre-gl/5.6.1/maplibre-gl.min.css" rel="stylesheet" />
 
   {{ template "script.html" . }} {{ template "styles.html" . }}
 </head>
@@ -47,12 +47,15 @@
           </div>
           <!-- 主题切换按钮 -->
           <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="切换主题">
-            <svg class="theme-icon sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="5"/>
-              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            <svg class="theme-icon sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5" />
+              <path
+                d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
             </svg>
-            <svg class="theme-icon moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            <svg class="theme-icon moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
             </svg>
           </button>
         </div>
@@ -158,7 +161,8 @@
           {{ if .UserAgent }}
           <div class="info-item" style="flex-direction:column;align-items:flex-start;gap:0.2rem;">
             <span class="info-label">设备 UA</span>
-            <span class="info-value" style="word-break:break-all;white-space:pre-line;margin-top:2px;">{{ .UserAgent }}</span>
+            <span class="info-value" style="word-break:break-all;white-space:pre-line;margin-top:2px;">{{ .UserAgent
+              }}</span>
           </div>
           {{ end }}
         </div>
@@ -167,12 +171,13 @@
         <div class="location-section">
           <div class="button-row">
             {{ if and .Latitude .Longitude }}
-            <button class="map-btn" onclick="showMap()">
+            <button class="map-btn" onclick="showMap()" title="查看地图 - MapTiler Streets v2 简化版">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path
                   d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
               </svg>
               查看地图
+              <span class="map-feature-badge">MapTiler</span>
             </button>
             {{ end }}
 
@@ -191,9 +196,10 @@
         <div class="panel-header">
           <h2>JSON 响应</h2>
           <button class="copy-btn" onclick="copyJSON()" title="复制 JSON">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
           </button>
         </div>
@@ -207,19 +213,23 @@
           <div class="api-examples">
             <div class="api-item">
               <span class="api-label">获取完整信息:</span>
-              <code class="api-code"><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/json</span></code>
+              <code
+                class="api-code"><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/json</span></code>
             </div>
             <div class="api-item">
               <span class="api-label">查询指定 IP:</span>
-              <code class="api-code"><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/json</span>?<span class="json-boolean">ip</span>=<span class="json-number">8.8.8.8</span></code>
+              <code
+                class="api-code"><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/json</span>?<span class="json-boolean">ip</span>=<span class="json-number">8.8.8.8</span></code>
             </div>
             <div class="api-item">
               <span class="api-label">指定语言:</span>
-              <code class="api-code"><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/json</span>?<span class="json-boolean">lang</span>=<span class="json-number">zh</span>  <span class="json-null"># 中文</span><br><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/json</span>?<span class="json-boolean">lang</span>=<span class="json-number">en</span>  <span class="json-null"># 英文</span></code>
+              <code
+                class="api-code"><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/json</span>?<span class="json-boolean">lang</span>=<span class="json-number">zh</span>  <span class="json-null"># 中文</span><br><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/json</span>?<span class="json-boolean">lang</span>=<span class="json-number">en</span>  <span class="json-null"># 英文</span></code>
             </div>
             <div class="api-item">
               <span class="api-label">端口检测:</span>
-              <code class="api-code"><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/<span class="json-string">port</span>/<span class="json-number">53</span></span>?<span class="json-boolean">ip</span>=<span class="json-number">8.8.8.8</span></code>
+              <code
+                class="api-code"><span class="json-key">curl</span> <span class="json-string">{{ .Host }}/<span class="json-string">port</span>/<span class="json-number">53</span></span>?<span class="json-boolean">ip</span>=<span class="json-number">8.8.8.8</span></code>
             </div>
           </div>
         </div>
@@ -239,12 +249,16 @@
     <div id="mapModal" class="map-modal" onclick="closeMap()">
       <div class="map-container" onclick="event.stopPropagation()">
         <button class="close-btn floating-close-btn" onclick="closeMap()" aria-label="关闭地图">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="11" class="close-btn-bg" />
             <line x1="8" y1="8" x2="16" y2="16" />
             <line x1="16" y1="8" x2="8" y2="16" />
           </svg>
         </button>
+        
+
+        
         <div id="mapFrame" class="map-frame"></div>
       </div>
     </div>
