@@ -8,7 +8,7 @@ require (
 	github.com/ip2location/ip2location-go/v9 v9.7.1
 	github.com/ip2location/ip2proxy-go/v4 v4.1.0
 	github.com/ipipdotnet/ipdb-go v1.3.3
-	github.com/oschwald/geoip2-golang v1.7.0
+	github.com/oschwald/maxminddb-golang v1.9.0
 	github.com/tagphi/czdb-search-golang v1.0.4
 	github.com/yinheli/qqwry v0.0.0-20160229183603-f50680010f4a
 )
@@ -16,7 +16,6 @@ require (
 replace github.com/cz88/czdb-search-golang => github.com/tagphi/czdb-search-golang v1.0.0
 
 require (
-	github.com/oschwald/maxminddb-golang v1.9.0 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yinheli/mahonia v0.0.0-20131226213531-0eef680515cc // indirect

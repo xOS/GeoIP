@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// Import the testDb from http_test.go
+
 // BenchmarkLangParameterPerformance 测试lang参数的性能
 func BenchmarkLangParameterPerformance(b *testing.B) {
 	server := &Server{

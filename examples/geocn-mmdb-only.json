@@ -1,0 +1,17 @@
+{
+  "listen_address": ":1212",
+  "template_dir": "../html",
+  "cache_size": 500,
+  "trusted_headers": [
+    "X-Real-IP"
+  ],
+  "enable_reverse_lookup": true,
+  "enable_port_lookup": true,
+  "enable_profiling": false,
+  "allow_custom_ip": true,
+  "databases": {
+    "geocn_mmdb": "../data/GeoCN.mmdb"
+  },
+  "hybrid_mode": false,
+  "auto_detect": false
+}

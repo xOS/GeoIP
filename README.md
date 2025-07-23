@@ -82,6 +82,7 @@ https://ifconfig.co.
 - `examples/complete-hybrid.json` - 完整混合模式（所有数据源）
 - `examples/ip2proxy-only.json` - 仅使用 IP2Proxy
 - `examples/qqwry-only.json` - 仅使用 qqwry
+- `examples/geocn-mmdb-only.json` - 仅使用 GeoCN.mmdb
 - `examples/relative-paths.json` - 相对路径示例
 - `examples/absolute-paths.json` - 绝对路径示例
 
@@ -117,6 +118,15 @@ https://ifconfig.co.
 
 # 使用 qqwry.dat 数据库（经典格式，与 .ipdb 功能相同）
 ./geoip -l 0.0.0.0:1212 -q data/qqwry.dat -H x-forwarded-for -r -s -p
+```
+
+### 混合模式：GeoCN.mmdb + MaxMind（推荐）
+```bash
+# 混合模式：中国大陆IP使用GeoCN.mmdb，其他IP使用MaxMind
+./geoip -l 0.0.0.0:1212 -hybrid -g data/GeoCN.mmdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -H x-forwarded-for -r -s -p
+
+# 混合模式：中国大陆IP优先使用GeoCN.mmdb，其次使用qqwry.ipdb，其他IP使用MaxMind
+./geoip -l 0.0.0.0:1212 -hybrid -g data/GeoCN.mmdb -q data/qqwry.ipdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -H x-forwarded-for -r -s -p
 ```
 
 ### 混合模式：qqwry + MaxMind（推荐）
@@ -295,9 +305,10 @@ between IPv4 and IPv6 lookup.
 * **Multi-format database support**: MMDB, BIN, CSV, IPDB, DAT formats
 * **Universal auto-detection**: All parameters support automatic format detection
 * **Smart fallback**: IP2Location data takes priority, falls back to MaxMind when needed
-* **Mixed database support**: Use MaxMind, IP2Location, and qqwry databases together seamlessly
+* **Mixed database support**: Use MaxMind, IP2Location, GeoCN.mmdb, and qqwry databases together seamlessly
+* **GeoCN.mmdb database support**: Specialized database for China mainland IP information with higher priority than qqwry
 * **QQWry database support**: Support for both .ipdb and .dat formats with intelligent hybrid mode
-* **Parameter flexibility**: IP2Location and qqwry databases can be used in any parameter position
+* **Parameter flexibility**: IP2Location, GeoCN.mmdb, and qqwry databases can be used in any parameter position
 * IP2Location databases can completely replace MaxMind databases
 * Proxy detection using IP2Location IP2PROXY-LITE database
 * Support for multiple proxy types: VPN, TOR, PUB (Public Proxy), DCH (Data Center), WEB, SES, RES, CPN, EPN
@@ -358,13 +369,15 @@ Usage of geoip:
   -n string
     	Path to GeoIP Connection-Type database
   -x string
-    	Path to IP2Proxy database (CSV/BIN)
+       	Path to IP2Proxy database (CSV/BIN)
   -q string
-    	Path to qqwry database (.ipdb or .dat format)
+       	Path to qqwry database (.ipdb or .dat format)
+  -g string
+       	Path to GeoCN.mmdb database (higher priority than qqwry)
   -hybrid
-    	Enable hybrid mode (use qqwry database for China mainland, MaxMind for others)
+       	Enable hybrid mode (use GeoCN.mmdb/qwry database for China mainland, MaxMind for others)
   -auto
-    	Auto-detect database formats
+       	Auto-detect database formats
   -l string
     	Listening address (default ":8080")
   -p	Enable port lookup

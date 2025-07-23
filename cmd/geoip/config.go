@@ -52,6 +52,9 @@ type DatabaseConfig struct {
 	// QQWry databases
 	QQWry string `json:"qqwry,omitempty"`
 
+	// GeoCN.mmdb database
+	GeoCN string `json:"geocn_mmdb,omitempty"`
+
 	// CZ88 databases
 	CZ88v4    string `json:"cz88v4,omitempty"`
 	CZ88v6    string `json:"cz88v6,omitempty"`
@@ -146,17 +149,18 @@ func generateExampleConfig(filename string) error {
 		HybridMode:          true,
 		AutoDetect:          false,
 		Databases: DatabaseConfig{
-			Country:        "data/GeoLite2-Country.mmdb",
-			City:           "data/GeoLite2-City.mmdb",
-			ASN:            "data/GeoLite2-ASN.mmdb",
-			ISP:            "data/GeoIP2-ISP.mmdb",
-			ConnectionType: "data/GeoIP2-Connection-Type.mmdb",
-			IP2Proxy:       "data/IP2PROXY-LITE-PX12.BIN",
-			QQWry:          "data/qqwry.ipdb",
-			CZ88v4:         "data/cz88_public_v4.czdb",
-			CZ88v6:         "data/cz88_public_v6.czdb",
-			CZDBKey:        "tWK5IvZ6QbhBFdp8OHZ7qA==",
-		},
+					Country:        "data/GeoLite2-Country.mmdb",
+					City:           "data/GeoLite2-City.mmdb",
+					ASN:            "data/GeoLite2-ASN.mmdb",
+					ISP:            "data/GeoIP2-ISP.mmdb",
+					ConnectionType: "data/GeoIP2-Connection-Type.mmdb",
+					IP2Proxy:       "data/IP2PROXY-LITE-PX12.BIN",
+					QQWry:          "data/qqwry.ipdb",
+					GeoCN:      "data/GeoCN.mmdb",
+					CZ88v4:         "data/cz88_public_v4.czdb",
+					CZ88v6:         "data/cz88_public_v6.czdb",
+					CZDBKey:        "tWK5IvZ6QbhBFdp8OHZ7qA==",
+				},
 	}
 
 	return config.SaveConfig(filename)
@@ -164,38 +168,41 @@ func generateExampleConfig(filename string) error {
 
 // overrideConfigWithFlags overrides config values with command line flags when provided
 func overrideConfigWithFlags(config *Config, countryFile, cityFile, asnFile, ispFile, connFile,
-	ip2proxyFile, qqwryFile, cz88v4File, cz88v6File *string, hybridMode, autoDetect *bool, listen, template *string,
+	ip2proxyFile, qqwryFile, geocnFile, cz88v4File, cz88v6File *string, hybridMode, autoDetect *bool, listen, template *string,
 	reverseLookup, portLookup *bool, cacheSize *int, profile *bool, headers multiValueFlag) {
 
 	// Override database paths if flags are provided
-	if *countryFile != "" {
-		config.Databases.Country = *countryFile
-	}
-	if *cityFile != "" {
-		config.Databases.City = *cityFile
-	}
-	if *asnFile != "" {
-		config.Databases.ASN = *asnFile
-	}
-	if *ispFile != "" {
-		config.Databases.ISP = *ispFile
-	}
-	if *connFile != "" {
-		config.Databases.ConnectionType = *connFile
-	}
-	if *ip2proxyFile != "" {
-		config.Databases.IP2Proxy = *ip2proxyFile
-	}
-	if *qqwryFile != "" {
-		config.Databases.QQWry = *qqwryFile
-	}
-	if *cz88v4File != "" {
-		config.Databases.CZ88v4 = *cz88v4File
-	}
-	if *cz88v6File != "" {
-		config.Databases.CZ88v6 = *cz88v6File
-	}
-	// czdb_key 由配置文件提供，如需命令行支持可自行扩展
+		if *countryFile != "" {
+			config.Databases.Country = *countryFile
+		}
+		if *cityFile != "" {
+			config.Databases.City = *cityFile
+		}
+		if *asnFile != "" {
+			config.Databases.ASN = *asnFile
+		}
+		if *ispFile != "" {
+			config.Databases.ISP = *ispFile
+		}
+		if *connFile != "" {
+			config.Databases.ConnectionType = *connFile
+		}
+		if *ip2proxyFile != "" {
+			config.Databases.IP2Proxy = *ip2proxyFile
+		}
+		if *qqwryFile != "" {
+			config.Databases.QQWry = *qqwryFile
+		}
+		if *geocnFile != "" {
+			config.Databases.GeoCN = *geocnFile
+		}
+		if *cz88v4File != "" {
+			config.Databases.CZ88v4 = *cz88v4File
+		}
+		if *cz88v6File != "" {
+			config.Databases.CZ88v6 = *cz88v6File
+		}
+		// czdb_key 由配置文件提供，如需命令行支持可自行扩展
 
 	// Override server settings if flags are provided
 	if flag.Lookup("l").Value.String() != ":1212" { // Check if -l flag was explicitly set
@@ -271,6 +278,7 @@ func (c *Config) resolveDatabasePaths(configDir string) {
 	c.Databases.ConnectionType = resolvePath(configDir, c.Databases.ConnectionType)
 	c.Databases.IP2Proxy = resolvePath(configDir, c.Databases.IP2Proxy)
 	c.Databases.QQWry = resolvePath(configDir, c.Databases.QQWry)
+	c.Databases.GeoCN = resolvePath(configDir, c.Databases.GeoCN)
 	c.Databases.CZ88v4 = resolvePath(configDir, c.Databases.CZ88v4)
 	c.Databases.CZ88v6 = resolvePath(configDir, c.Databases.CZ88v6)
 
@@ -292,6 +300,7 @@ func (c *Config) validateDatabasePaths() error {
 		{"connection type database", c.Databases.ConnectionType},
 		{"IP2Proxy database", c.Databases.IP2Proxy},
 		{"QQWry database", c.Databases.QQWry},
+		{"GeoCN.mmdb database", c.Databases.GeoCN},
 		{"CZ88v4 database", c.Databases.CZ88v4},
 		{"CZ88v6 database", c.Databases.CZ88v6},
 		{"template directory", c.TemplateDir},
@@ -320,13 +329,13 @@ func (c *Config) Validate() error {
 	}
 
 	// Check if at least one database is configured
-	db := c.Databases
-	if db.Country == "" && db.City == "" && db.ASN == "" &&
-		db.ISP == "" && db.ConnectionType == "" &&
-		db.IP2Proxy == "" && db.QQWry == "" &&
-		db.CZ88v4 == "" && db.CZ88v6 == "" {
-		return fmt.Errorf("at least one database must be configured")
-	}
+		db := c.Databases
+		if db.Country == "" && db.City == "" && db.ASN == "" &&
+			db.ISP == "" && db.ConnectionType == "" &&
+			db.IP2Proxy == "" && db.QQWry == "" &&
+			db.GeoCN == "" && db.CZ88v4 == "" && db.CZ88v6 == "" {
+			return fmt.Errorf("at least one database must be configured")
+		}
 
 	// Check if hybrid mode requires qqwry or cz88 database
 	if c.HybridMode && (db.QQWry == "" && (db.CZ88v4 == "" || db.CZ88v6 == "")) {

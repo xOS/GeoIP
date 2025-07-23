@@ -14,6 +14,39 @@
     optimizeIPDisplay();
     // 高亮 API 代码
     highlightApiCode();
+    // 隐藏空白字段
+    hideEmptyFields();
+  }
+  
+  // 隐藏空白字段
+  function hideEmptyFields() {
+    // 获取所有信息项
+    const infoItems = document.querySelectorAll('.info-item');
+    
+    // 遍历所有信息项，检查值是否为空
+    infoItems.forEach(item => {
+      const labelElement = item.querySelector('.info-label');
+      const valueElement = item.querySelector('.info-value');
+      
+      // 特殊处理设备 UA 字段
+      if (item.style.flexDirection === 'column' || item.style.flexDirection === 'column-reverse') {
+        // 对于设备 UA 字段，检查值是否为空
+        if (!valueElement || !valueElement.textContent.trim()) {
+          item.style.display = 'none';
+        }
+        return;
+      }
+      
+      if (labelElement && valueElement) {
+        const labelText = labelElement.textContent.trim();
+        const valueText = valueElement.textContent.trim();
+        
+        // 如果值为空，则隐藏整个信息项
+        if (!valueText) {
+          item.style.display = 'none';
+        }
+      }
+    });
   }
 
   // 主题管理
@@ -162,7 +195,17 @@
       const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
 
       if (ipRegex.test(inputValue) || ipv6Regex.test(inputValue)) {
-        window.location.href = `/?ip=${encodeURIComponent(inputValue)}`;
+        // 使用 AJAX 请求获取数据，而不是跳转页面
+        fetch(`/json?ip=${encodeURIComponent(inputValue)}`)
+          .then(response => response.json())
+          .then(data => {
+            // 更新页面内容
+            updatePageContent(data);
+          })
+          .catch(error => {
+            console.error('Error fetching data:', error);
+            alert('查询失败，请稍后重试');
+          });
       } else {
         alert('请输入有效的 IP 地址');
         ipInput.focus();
@@ -175,6 +218,116 @@
 
   function updateIP(value) {
     ip = value.trim();
+  }
+
+  function updatePageContent(data) {
+    // 更新页面标题中的IP显示
+    const ipValueElements = document.querySelectorAll('.ip-value');
+    ipValueElements.forEach(element => {
+      element.textContent = data.ip || 'N/A';
+      // 优化IP显示
+      if (data.ip && data.ip.includes(':') && data.ip.length > 15) {
+        element.classList.add('ipv6');
+      } else {
+        element.classList.remove('ipv6');
+      }
+      
+      // 检测超长 IP 地址
+      if (data.ip && data.ip.length > 20) {
+        element.style.fontSize = '1.2rem';
+        element.style.letterSpacing = '0.2px';
+      } else {
+        element.style.fontSize = '';
+        element.style.letterSpacing = '';
+      }
+    });
+
+    // 通过标签文本来更新左侧信息框中的各项信息
+    // 只有在元素存在时才更新，避免因为元素不存在而出现问题
+    safeUpdateInfoItemByLabel('IP 地址', data.ip);
+    safeUpdateInfoItemByLabel('国家/地区', data.country);
+    safeUpdateInfoItemByLabel('国家代码', data.country_code);
+    safeUpdateInfoItemByLabel('省/州', data.region);
+    safeUpdateInfoItemByLabel('城市', data.city);
+    safeUpdateInfoItemByLabel('区县', data.district);
+    safeUpdateInfoItemByLabel('邮编', data.zip_code);
+    safeUpdateInfoItemByLabel('纬度', data.latitude);
+    safeUpdateInfoItemByLabel('经度', data.longitude);
+    safeUpdateInfoItemByLabel('时区', data.time_zone);
+    safeUpdateInfoItemByLabel('ASN', data.asn);
+    safeUpdateInfoItemByLabel('服务商', data.isp);
+    safeUpdateInfoItemByLabel('所属组织', data.org);
+    safeUpdateInfoItemByLabel('网络类型', data.connection_type);
+    safeUpdateInfoItemByLabel('主机名', data.hostname);
+    
+    // 设备 UA (特殊处理)
+    const userAgentItems = document.querySelectorAll('.info-item[style*="flex-direction:column"]');
+    if (userAgentItems.length > 0) {
+      const userAgentElement = userAgentItems[0].querySelector('.info-value');
+      if (userAgentElement) {
+        const parent = userAgentItems[0];
+        if (data.user_agent) {
+          userAgentElement.textContent = data.user_agent;
+          userAgentElement.style.whiteSpace = 'pre-line';
+          userAgentElement.style.wordBreak = 'break-all';
+          userAgentElement.style.marginTop = '2px';
+          parent.style.display = '';
+        } else {
+          parent.style.display = 'none';
+        }
+      }
+    }
+    
+    // 更新JSON预览框
+    const jsonOutput = document.getElementById('jsonOutput');
+    if (jsonOutput) {
+      try {
+        const formatted = JSON.stringify(data, null, 2);
+        const highlighted = syntaxHighlight(formatted);
+        jsonOutput.innerHTML = highlighted;
+        // 更新全局变量
+        jsonObj = JSON.stringify(data);
+      } catch (e) {
+        jsonOutput.textContent = JSON.stringify(data);
+      }
+    }
+    
+    // 控制地图按钮的显示/隐藏
+    const mapBtn = document.querySelector('.map-btn');
+    if (mapBtn) {
+      if (data.latitude && data.longitude) {
+        mapBtn.style.display = '';
+      } else {
+        mapBtn.style.display = 'none';
+      }
+    }
+    
+    // 更新地图数据
+    window.data = data;
+  }
+
+  function safeUpdateInfoItemByLabel(label, value) {
+    // 查找对应标签的元素
+    const labelElements = Array.from(document.querySelectorAll('.info-label'));
+    const labelElement = labelElements.find(el => el.textContent.trim() === label);
+    
+    if (labelElement) {
+      // 找到对应的值元素（在标签元素的父元素中的另一个子元素）
+      const parent = labelElement.closest('.info-item');
+      if (parent) {
+        const valueElement = parent.querySelector('.info-value');
+        if (valueElement) {
+          // 如果有值则显示，否则隐藏整个信息项
+          if (value !== undefined && value !== null && value !== "") {
+            valueElement.textContent = value;
+            parent.style.display = '';
+          } else {
+            parent.style.display = 'none';
+          }
+        }
+      }
+    }
+    // 如果没有找到对应的标签元素，则不执行任何操作
   }
 
   // 全局标志和缓存

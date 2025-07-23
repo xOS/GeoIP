@@ -231,6 +231,13 @@ func (q *QQWryDatReader) Proxy(ip net.IP) (Proxy, error) {
 	return Proxy{}, nil
 }
 
+// Network returns network information for the given IP
+func (q *QQWryDatReader) Network(ip net.IP) (*net.IPNet, error) {
+	// QQWry databases don't typically provide network information
+	return nil, fmt.Errorf("network information not available in QQWry database")
+}
+
+
 // IsEmpty returns whether the database is empty
 func (q *QQWryDatReader) IsEmpty() bool {
 	return q.db == nil
