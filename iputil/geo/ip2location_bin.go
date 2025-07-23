@@ -210,6 +210,13 @@ func (r *IP2LocationBinReader) Proxy(ip net.IP) (Proxy, error) {
 	}, nil
 }
 
+// Network returns network information for the given IP
+func (r *IP2LocationBinReader) Network(ip net.IP) (*net.IPNet, error) {
+	// IP2Location databases don't typically provide network information
+	return nil, nil
+}
+
+
 // IsEmpty implements the Reader interface
 func (r *IP2LocationBinReader) IsEmpty() bool {
 	return r.db == nil

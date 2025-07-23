@@ -38,8 +38,8 @@ func (c *CZDBReader) City(ip net.IP) (City, error) {
 	if err != nil {
 		return City{}, err
 	}
-	_, region, city, street, _ := splitCZDBFields(raw)
-	return City{RegionName: region, Name: city, Street: street}, nil
+	_, region, city, district, _ := splitCZDBFields(raw)
+	return City{RegionName: region, Name: city, District: district}, nil
 }
 
 func (c *CZDBReader) ASN(ip net.IP) (ASN, error) {
@@ -62,6 +62,13 @@ func (c *CZDBReader) ConnectionType(ip net.IP) (ConnectionType, error) {
 func (c *CZDBReader) Proxy(ip net.IP) (Proxy, error) {
 	return Proxy{}, nil
 }
+
+// Network returns network information for the given IP
+func (c *CZDBReader) Network(ip net.IP) (*net.IPNet, error) {
+	// CZDB databases don't typically provide network information
+	return nil, nil
+}
+
 
 func (c *CZDBReader) IsEmpty() bool {
 	return c.searcher == nil

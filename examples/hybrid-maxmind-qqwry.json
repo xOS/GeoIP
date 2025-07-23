@@ -11,13 +11,14 @@
   "enable_profiling": false,
   "allow_custom_ip": true,
   "databases": {
-    "country": "../data/GeoLite2-Country.mmdb",
-    "city": "../data/GeoLite2-City.mmdb",
-    "asn": "../data/GeoLite2-ASN.mmdb",
-    "isp": "../data/GeoIP2-ISP.mmdb",
-    "connection_type": "../data/GeoIP2-Connection-Type.mmdb",
-    "qqwry": "../data/qqwry.ipdb"
-  },
+      "country": "../data/GeoLite2-Country.mmdb",
+      "city": "../data/GeoLite2-City.mmdb",
+      "asn": "../data/GeoLite2-ASN.mmdb",
+      "isp": "../data/GeoIP2-ISP.mmdb",
+      "connection_type": "../data/GeoIP2-Connection-Type.mmdb",
+      "qqwry": "../data/qqwry.ipdb",
+      "geocn_mmdb": "../data/GeoCN.mmdb"
+    },
   "hybrid_mode": true,
   "auto_detect": false
 }

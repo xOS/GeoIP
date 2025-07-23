@@ -38,10 +38,11 @@ func main() {
 	asnFile := flag.String("a", "", "Path to GeoIP ASN database")
 	ispFile := flag.String("i", "", "Path to GeoIP ISP database")
 	connFile := flag.String("n", "", "Path to GeoIP2 Connection-Type database")
-	ip2proxyFile := flag.String("x", "", "Path to IP2Proxy database (CSV/BIN)")
+	ip2proxyFile := flag.String("x", "", "Path to IP2Proxy database (BIN)")
 	qqwryFile := flag.String("q", "", "Path to qqwry database (.ipdb or .dat format)")
-	cz88v4File := flag.String("z4", "", "Path to cz88 v4 czdb file")
-	cz88v6File := flag.String("z6", "", "Path to cz88 v6 czdb file")
+		geocnFile := flag.String("g", "", "Path to GeoCN.mmdb database")
+		cz88v4File := flag.String("z4", "", "Path to cz88 v4 czdb file")
+		cz88v6File := flag.String("z6", "", "Path to cz88 v6 czdb file")
 	hybridMode := flag.Bool("hybrid", false, "Enable hybrid mode (use qqwry database for China mainland, MaxMind for others)")
 	autoDetect := flag.Bool("auto", false, "Auto-detect database formats")
 	listen := flag.String("l", ":1212", "Listening address")
@@ -77,7 +78,7 @@ func main() {
 
 	// Override config with command line flags if provided
 	overrideConfigWithFlags(config, countryFile, cityFile, asnFile, ispFile, connFile,
-		ip2proxyFile, qqwryFile, cz88v4File, cz88v6File, hybridMode, autoDetect, listen, template,
+		ip2proxyFile, qqwryFile, geocnFile, cz88v4File, cz88v6File, hybridMode, autoDetect, listen, template,
 		reverseLookup, portLookup, cacheSize, profile, headers)
 
 	// Validate configuration
@@ -94,38 +95,40 @@ func main() {
 
 	if config.HybridMode && config.Databases.QQWry != "" {
 		// Use hybrid mode: czdb v4/v6 for China mainland, fallback to qqwry, MaxMind for others
-		r, err = geo.OpenWithHybridMode(
-			config.Databases.Country,
-			config.Databases.City,
-			config.Databases.ASN,
-			config.Databases.ISP,
-			config.Databases.ConnectionType,
-			config.Databases.IP2Proxy,
-			config.Databases.QQWry,
-			config.Databases.CZ88v4,
-			config.Databases.CZDBKey,
-			config.Databases.CZ88v6,
-		)
+				r, err = geo.OpenWithHybridMode(
+					config.Databases.Country,
+					config.Databases.City,
+					config.Databases.ASN,
+					config.Databases.ISP,
+					config.Databases.ConnectionType,
+					config.Databases.IP2Proxy,
+					config.Databases.QQWry,
+					config.Databases.GeoCN,
+					config.Databases.CZ88v4,
+					config.Databases.CZDBKey,
+					config.Databases.CZ88v6,
+				)
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Println("Using hybrid mode: czdb v4/v6 for China mainland, fallback to qqwry, MaxMind for others")
 	} else if config.AutoDetect {
 		// Auto-detect database formats
-		databases := []struct {
-			path string
-			key  string
-		}{
-			{config.Databases.Country, ""},
-			{config.Databases.City, ""},
-			{config.Databases.ASN, ""},
-			{config.Databases.ISP, ""},
-			{config.Databases.ConnectionType, ""},
-			{config.Databases.IP2Proxy, ""},
-			{config.Databases.QQWry, ""},
-			{config.Databases.CZ88v4, config.Databases.CZ88v4Key},
-			{config.Databases.CZ88v6, config.Databases.CZ88v6Key},
-		}
+				databases := []struct {
+					path string
+					key  string
+				}{
+					{config.Databases.Country, ""},
+					{config.Databases.City, ""},
+					{config.Databases.ASN, ""},
+					{config.Databases.ISP, ""},
+					{config.Databases.ConnectionType, ""},
+					{config.Databases.IP2Proxy, ""},
+					{config.Databases.QQWry, ""},
+					{config.Databases.GeoCN, ""},
+					{config.Databases.CZ88v4, config.Databases.CZ88v4Key},
+					{config.Databases.CZ88v6, config.Databases.CZ88v6Key},
+				}
 		var readers []geo.Reader
 		for _, db := range databases {
 			if db.path == "" {

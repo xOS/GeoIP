@@ -115,6 +115,13 @@ func (q *QQWryIPDBReader) Proxy(ip net.IP) (Proxy, error) {
 	return Proxy{}, nil
 }
 
+// Network returns network information for the given IP
+func (q *QQWryIPDBReader) Network(ip net.IP) (*net.IPNet, error) {
+	// QQWry databases don't typically provide network information
+	return nil, nil
+}
+
+
 // IsEmpty returns whether the database is empty
 func (q *QQWryIPDBReader) IsEmpty() bool {
 	return q.db == nil
