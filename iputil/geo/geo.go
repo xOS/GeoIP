@@ -15,7 +15,6 @@ type Reader interface {
 	ISP(net.IP) (ISP, error)
 	ConnectionType(net.IP) (ConnectionType, error)
 	Proxy(net.IP) (Proxy, error)
-	Network(net.IP) (*net.IPNet, error)
 	IsEmpty() bool
 }
 
@@ -496,11 +495,7 @@ func (g *geoip) Proxy(ip net.IP) (Proxy, error) {
 	return proxy, nil
 }
 
-func (g *geoip) Network(ip net.IP) (*net.IPNet, error) {
-	// For MaxMind databases, we don't have direct network information
-	// Return nil to indicate network information is not available
-	return nil, nil
-}
+
 
 
 func (g *geoip) IsEmpty() bool {

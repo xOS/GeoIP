@@ -63,11 +63,6 @@ func (c *CZDBReader) Proxy(ip net.IP) (Proxy, error) {
 	return Proxy{}, nil
 }
 
-// Network returns network information for the given IP
-func (c *CZDBReader) Network(ip net.IP) (*net.IPNet, error) {
-	// CZDB databases don't typically provide network information
-	return nil, nil
-}
 
 
 func (c *CZDBReader) IsEmpty() bool {

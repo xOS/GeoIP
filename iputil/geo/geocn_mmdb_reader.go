@@ -170,41 +170,7 @@ func (g *GeoCNMMDBReader) Proxy(ip net.IP) (Proxy, error) {
 	return Proxy{IsProxy: false}, nil
 }
 
-// Network returns network information for the given IP
-func (g *GeoCNMMDBReader) Network(ip net.IP) (*net.IPNet, error) {
-	if g.reader == nil {
-		return nil, nil
-	}
-	
-	var record GeoCNRecord
-	err := g.reader.Lookup(ip, &record)
-	if err != nil {
-		return nil, err
-	}
-	
-	// 如果记录中有network字段，优先使用
-	if record.Network != "" {
-		_, network, err := net.ParseCIDR(record.Network)
-		if err == nil {
-			return network, nil
-		}
-	}
-	
-	// 如果没有network字段或解析失败，构造一个默认的/24网络
-	// 这是一个简单的实现，实际应用中可能需要更复杂的逻辑
-	ip4 := ip.To4()
-	if ip4 != nil {
-		// 创建一个/24网络
-		mask := net.IPv4Mask(255, 255, 255, 0)
-		network := &net.IPNet{
-			IP:   ip4.Mask(mask),
-			Mask: mask,
-		}
-		return network, nil
-	}
-	
-	return nil, nil
-}
+
 
 
 // IsEmpty returns true if the reader is empty

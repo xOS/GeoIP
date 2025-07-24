@@ -223,6 +223,8 @@
     overflow: hidden;
     transition: all 0.3s ease;
     flex: 1;
+    min-width: 0; /* 允许容器收缩 */
+    max-width: 100%; /* 防止溢出 */
   }
 
   .search-container:hover {
@@ -254,6 +256,11 @@
     -webkit-text-size-adjust: 100%;
     /* 修复Android Chrome的问题 */
     transform: translateZ(0);
+    /* 确保在窄屏幕下不会溢出 */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .search-input::placeholder {
@@ -276,6 +283,15 @@
     margin: 0.2rem;
     width: 42px;
     height: 42px;
+    flex-shrink: 0; /* 防止按钮被压缩 */
+    min-width: 42px; /* 确保最小宽度 */
+    min-height: 42px; /* 确保最小高度 */
+  }
+
+  .search-btn svg {
+    width: 20px;
+    height: 20px;
+    transition: all 0.3s ease;
   }
 
   .search-btn:hover {
@@ -301,6 +317,9 @@
     height: 42px;
     position: relative;
     overflow: hidden;
+    flex-shrink: 0; /* 防止按钮被压缩 */
+    min-width: 42px; /* 确保最小宽度 */
+    min-height: 42px; /* 确保最小高度 */
   }
 
   .theme-toggle-btn:hover {
@@ -672,6 +691,16 @@
       padding: 2px 6px;
       margin-left: 4px;
     }
+
+    .search-btn {
+      width: 28px;
+      height: 28px;
+    }
+
+    .search-btn svg {
+      width: 18px;
+      height: 18px;
+    }
   }
 
   /* JSON 面板 */
@@ -916,6 +945,19 @@
     text-decoration: underline;
   }
 
+  /* 中等屏幕图标优化 */
+  @media (max-width: 600px) and (min-width: 401px) {
+    .search-btn {
+      width: 30px;
+      height: 30px;
+    }
+
+    .search-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
   /* 响应式设计 */
   @media (max-width: 768px) {
     .main-container {
@@ -973,6 +1015,16 @@
       -webkit-transform: translate3d(0, 0, 0);
     }
 
+    .search-btn {
+      width: 32px;
+      height: 32px;
+    }
+
+    .search-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
     .map-container {
       width: 95%;
       max-height: 70vh;
@@ -1013,8 +1065,7 @@
 
     /* 小屏幕输入框进一步优化 */
     .search-container {
-      border-radius: 25px;
-      /* 减少圆角以适应小屏幕 */
+      border-radius: 55px; /* 根据更大的高度调整 */
     }
 
     .search-input {
@@ -1033,14 +1084,104 @@
     }
 
     .search-btn {
-      width: 48px;
-      height: 48px;
-      margin: 0.1rem;
+      width: 32px;
+      height: 32px;
+    }
+
+    .search-btn svg {
+      width: 18px;
+      height: 18px;
     }
 
     .theme-toggle-btn {
       width: 48px;
       height: 48px;
+    }
+  }
+
+  /* 极窄屏幕优化 - 355px以下 */
+  @media (max-width: 355px) and (min-width: 281px) {
+    .top-query-section {
+      width: 96%;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .search-container {
+      min-width: 0;
+      flex-shrink: 1;
+      border-radius: 45px; /* 根据高度变化适当调整 */
+    }
+
+    .search-input {
+      font-size: 14px !important;
+      padding: 0.6rem 0.8rem;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .search-btn {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0; /* 防止按钮被压缩 */
+    }
+
+    .search-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .theme-toggle-btn {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0; /* 防止按钮被压缩 */
+    }
+
+    .theme-toggle-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  /* 超极窄屏幕优化 - 280px以下 */
+  @media (max-width: 280px) {
+    .top-query-section {
+      width: 98%;
+      gap: 0.3rem;
+      margin-top: 0.8rem;
+    }
+
+    .search-container {
+      min-width: 0;
+      border-radius: 40px; /* 根据更小的高度调整 */
+    }
+
+    .search-input {
+      font-size: 13px !important;
+      padding: 0.5rem 0.6rem;
+      min-width: 0;
+    }
+
+    .search-btn {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+
+    .search-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .theme-toggle-btn {
+      width: 30px;
+      height: 30px;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle-btn svg {
+      width: 14px;
+      height: 14px;
     }
   }
 
@@ -1051,6 +1192,36 @@
       padding: 0.4rem 0.6rem;
       letter-spacing: 0px;
       word-spacing: -2px;
+    }
+
+    .top-query-section {
+      width: 98%;
+      gap: 0.4rem;
+    }
+
+    .search-input {
+      font-size: 14px !important;
+      padding: 0.5rem 0.6rem;
+    }
+
+    .search-btn {
+      width: 26px;
+      height: 26px;
+    }
+
+    .search-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .theme-toggle-btn {
+      width: 32px;
+      height: 32px;
+    }
+
+    .theme-toggle-btn svg {
+      width: 14px;
+      height: 14px;
     }
   }
 
@@ -1161,11 +1332,19 @@
     border: none !important;
     position: relative;
     overflow: hidden;
+    /* 性能优化 */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   /* MapLibre 地图样式 */
   .maplibregl-map {
     border-radius: 0 0 12px 12px;
+    /* 性能优化 */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .maplibregl-ctrl-attrib {
@@ -1183,6 +1362,8 @@
     color: var(--text-primary) !important;
     border-radius: 8px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    padding: 8px 10px !important;
+    max-width: 180px !important;
   }
 
   /* 自定义地图标记样式 */
@@ -1194,6 +1375,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* 性能优化 */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .marker-pin {
@@ -1230,6 +1415,9 @@
     transform: translate(-50%, -50%);
     animation: pulse 2s infinite;
     z-index: 1;
+    /* 性能优化 */
+    will-change: transform, opacity;
+    backface-visibility: hidden;
   }
 
   .marker-pulse::before {
@@ -1266,21 +1454,24 @@
 
   /* 地图弹窗样式 */
   .map-popup {
-    padding: 4px 0;
+    padding: 0;
+    min-width: 100px;
+    width: fit-content;
+    max-width: 180px;
   }
 
   .map-popup h4 {
-    margin: 0 0 8px 0;
+    margin: 0 0 4px 0;
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     font-weight: 600;
   }
 
   .map-popup p {
-    margin: 4px 0;
-    font-size: 0.8rem;
+    margin: 0 0 2px 0;
+    font-size: 0.65rem;
     color: var(--text-secondary);
-    line-height: 1.4;
+    line-height: 1.2;
   }
 
   .map-popup strong {
@@ -1352,6 +1543,8 @@
   [data-theme="dark"] .maplibregl-popup-content {
     background: rgba(30, 41, 59, 0.95) !important;
     border: 1px solid rgba(59, 130, 246, 0.2) !important;
+    padding: 8px 10px !important;
+    max-width: 180px !important;
   }
 
   [data-theme="dark"] .maplibregl-popup-tip {
@@ -1397,5 +1590,20 @@
     color: #ef4444;
     font-size: 0.9rem;
     text-align: center;
+  }
+
+  /* 地图性能优化样式 */
+  .maplibregl-canvas-container {
+    /* 启用硬件加速 */
+    transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+
+  .maplibregl-canvas {
+    /* 优化画布渲染 */
+    image-rendering: optimizeSpeed;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: optimize-contrast;
   }
 </style>

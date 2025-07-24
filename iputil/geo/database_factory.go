@@ -165,7 +165,7 @@ func (e *EmptyReader) ASN(net.IP) (ASN, error)                       { return AS
 func (e *EmptyReader) ISP(net.IP) (ISP, error)                       { return ISP{}, nil }
 func (e *EmptyReader) ConnectionType(net.IP) (ConnectionType, error) { return ConnectionType{}, nil }
 func (e *EmptyReader) Proxy(net.IP) (Proxy, error)                   { return Proxy{}, nil }
-func (e *EmptyReader) Network(net.IP) (*net.IPNet, error)            { return nil, fmt.Errorf("empty reader") }
+
 func (e *EmptyReader) IsEmpty() bool                                 { return true }
 
 // OpenAuto automatically detects database types and creates appropriate readers
