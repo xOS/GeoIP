@@ -1161,11 +1161,19 @@
     border: none !important;
     position: relative;
     overflow: hidden;
+    /* 性能优化 */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   /* MapLibre 地图样式 */
   .maplibregl-map {
     border-radius: 0 0 12px 12px;
+    /* 性能优化 */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .maplibregl-ctrl-attrib {
@@ -1183,6 +1191,8 @@
     color: var(--text-primary) !important;
     border-radius: 8px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    padding: 8px 10px !important;
+    max-width: 180px !important;
   }
 
   /* 自定义地图标记样式 */
@@ -1194,6 +1204,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* 性能优化 */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .marker-pin {
@@ -1230,6 +1244,9 @@
     transform: translate(-50%, -50%);
     animation: pulse 2s infinite;
     z-index: 1;
+    /* 性能优化 */
+    will-change: transform, opacity;
+    backface-visibility: hidden;
   }
 
   .marker-pulse::before {
@@ -1266,21 +1283,24 @@
 
   /* 地图弹窗样式 */
   .map-popup {
-    padding: 4px 0;
+    padding: 0;
+    min-width: 100px;
+    width: fit-content;
+    max-width: 180px;
   }
 
   .map-popup h4 {
-    margin: 0 0 8px 0;
+    margin: 0 0 4px 0;
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     font-weight: 600;
   }
 
   .map-popup p {
-    margin: 4px 0;
-    font-size: 0.8rem;
+    margin: 0 0 2px 0;
+    font-size: 0.65rem;
     color: var(--text-secondary);
-    line-height: 1.4;
+    line-height: 1.2;
   }
 
   .map-popup strong {
@@ -1352,6 +1372,8 @@
   [data-theme="dark"] .maplibregl-popup-content {
     background: rgba(30, 41, 59, 0.95) !important;
     border: 1px solid rgba(59, 130, 246, 0.2) !important;
+    padding: 8px 10px !important;
+    max-width: 180px !important;
   }
 
   [data-theme="dark"] .maplibregl-popup-tip {
@@ -1397,5 +1419,20 @@
     color: #ef4444;
     font-size: 0.9rem;
     text-align: center;
+  }
+
+  /* 地图性能优化样式 */
+  .maplibregl-canvas-container {
+    /* 启用硬件加速 */
+    transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+
+  .maplibregl-canvas {
+    /* 优化画布渲染 */
+    image-rendering: optimizeSpeed;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: optimize-contrast;
   }
 </style>

@@ -1,7 +1,6 @@
 package geo
 
 import (
-	"fmt"
 	"net"
 )
 
@@ -117,26 +116,6 @@ func (c *CombinedReader) Proxy(ip net.IP) (Proxy, error) {
 	return Proxy{}, nil
 }
 
-// Network returns network information for the given IP
-func (c *CombinedReader) Network(ip net.IP) (*net.IPNet, error) {
-	// Try geoip reader first
-	if c.geoip != nil {
-		network, err := c.geoip.Network(ip)
-		if err == nil && network != nil {
-			return network, nil
-		}
-	}
-	
-	// Fallback to ip2proxy reader
-	if c.ip2proxy != nil {
-		network, err := c.ip2proxy.Network(ip)
-		if err == nil && network != nil {
-			return network, nil
-		}
-	}
-	
-	return nil, fmt.Errorf("no network information available")
-}
 
 
 // IsEmpty returns true if both readers are empty

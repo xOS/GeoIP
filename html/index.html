@@ -99,12 +99,8 @@
             <span class="info-value">{{ .PostalCode }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">纬度</span>
-            <span class="info-value">{{ .Latitude }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">经度</span>
-            <span class="info-value">{{ .Longitude }}</span>
+            <span class="info-label">经纬度</span>
+            <span class="info-value">{{ .Latitude }},{{ .Longitude }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">时区</span>
@@ -140,7 +136,7 @@
         <!-- 地图和捐助区域 -->
         <div class="location-section">
           <div class="button-row">
-            <button class="map-btn" onclick="showMap()" title="查看地图 - MapTiler Streets v2 简化版">
+            <button class="map-btn" onclick="showMap()" title="查看地图 - MapTiler Basic v2 简化版">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path
                   d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />

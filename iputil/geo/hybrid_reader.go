@@ -1,7 +1,6 @@
 package geo
 
 import (
-	"fmt"
 	"net"
 	"strings"
 )
@@ -632,80 +631,6 @@ func isChinaIPv6(ip net.IP) bool {
 	return ip.To16() != nil && ip.To4() == nil
 }
 
-// Network returns network information for the given IP
-func (h *HybridReader) Network(ip net.IP) (*net.IPNet, error) {
-	// 对于中国大陆IP，优先使用GeoCN.mmdb
-	if h.isChinaMainlandIP(ip) {
-		if h.geocn != nil {
-			network, err := h.geocn.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-		
-		// 如果GeoCN.mmdb没有数据，尝试其他数据库
-		if h.czdbV4 != nil && isChinaIPv4(ip) {
-			network, err := h.czdbV4.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-		if h.czdbV6 != nil && isChinaIPv6(ip) {
-			network, err := h.czdbV6.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-		if h.qqwry != nil {
-			network, err := h.qqwry.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-		if h.maxmind != nil {
-			network, err := h.maxmind.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-	} else {
-		// 非中国大陆IP，MaxMind优先
-		if h.maxmind != nil {
-			network, err := h.maxmind.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-		
-		// Fallback to other readers
-		if h.geocn != nil {
-			network, err := h.geocn.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-		if h.czdbV4 != nil {
-			network, err := h.czdbV4.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-		if h.czdbV6 != nil {
-			network, err := h.czdbV6.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-		if h.qqwry != nil {
-			network, err := h.qqwry.Network(ip)
-			if err == nil && network != nil {
-				return network, nil
-			}
-		}
-	}
-	
-	return nil, fmt.Errorf("no network information available")
-}
 
 
 // IsEmpty returns true if both readers are empty
