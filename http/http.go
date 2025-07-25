@@ -86,11 +86,47 @@ func New(db geo.Reader, cache *Cache, profile bool, allowCustomIP bool) *Server 
 }
 
 func ipFromForwardedForHeader(v string) string {
+	// 处理 X-Forwarded-For 格式: client, proxy1, proxy2
+	// 返回第一个（最左边的）IP，这通常是真实客户端IP
+	v = strings.TrimSpace(v)
 	sep := strings.Index(v, ",")
 	if sep == -1 {
 		return v
 	}
-	return v[:sep]
+	return strings.TrimSpace(v[:sep])
+}
+
+// isPrivateIP 检查IP是否为私有IP
+func isPrivateIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+	
+	// IPv4 私有地址范围
+	if ip4 := ip.To4(); ip4 != nil {
+		// 10.0.0.0/8
+		if ip4[0] == 10 {
+			return true
+		}
+		// 172.16.0.0/12
+		if ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31 {
+			return true
+		}
+		// 192.168.0.0/16
+		if ip4[0] == 192 && ip4[1] == 168 {
+			return true
+		}
+	}
+	
+	// IPv6 私有地址
+	if ip.To16() != nil && ip.To4() == nil {
+		// fc00::/7 (Unique Local Address)
+		if ip[0] == 0xfc || ip[0] == 0xfd {
+			return true
+		}
+	}
+	
+	return false
 }
 
 // ipFromRequest detects the IP address for this transaction.
@@ -100,22 +136,70 @@ func ipFromForwardedForHeader(v string) string {
 // * `customIP` - whether to allow the IP to be pulled from query parameters
 func ipFromRequest(headers []string, r *http.Request, customIP bool) (net.IP, error) {
 	remoteIP := ""
+	
+	// 1. 首先检查查询参数中的自定义IP
 	if customIP && r.URL != nil {
 		if v, ok := r.URL.Query()["ip"]; ok {
 			remoteIP = v[0]
 		}
 	}
+	
+	// 2. 如果没有自定义IP，按优先级检查HTTP头部
 	if remoteIP == "" {
 		for _, header := range headers {
-			remoteIP = r.Header.Get(header)
-			if http.CanonicalHeaderKey(header) == "X-Forwarded-For" {
-				remoteIP = ipFromForwardedForHeader(remoteIP)
+			headerValue := r.Header.Get(header)
+			if headerValue == "" {
+				continue
 			}
+			
+			// 调试日志（可选，生产环境可以移除）
+			// log.Printf("检查头部 %s: %s", header, headerValue)
+			
+			// 处理不同类型的头部
+			canonicalHeader := http.CanonicalHeaderKey(header)
+			switch canonicalHeader {
+			case "X-Forwarded-For", "Forwarded-For":
+				// 处理可能包含多个IP的情况
+				remoteIP = ipFromForwardedForHeader(headerValue)
+			case "Forwarded":
+				// RFC 7239 格式: for=192.0.2.60;proto=http;by=203.0.113.43
+				// 提取 for= 后面的IP
+				if strings.Contains(headerValue, "for=") {
+					parts := strings.Split(headerValue, ";")
+					for _, part := range parts {
+						part = strings.TrimSpace(part)
+						if strings.HasPrefix(part, "for=") {
+							forValue := strings.TrimPrefix(part, "for=")
+							// 移除可能的引号和端口号
+							forValue = strings.Trim(forValue, "\"")
+							if colonIndex := strings.LastIndex(forValue, ":"); colonIndex > 0 {
+								// 检查是否是IPv6地址（包含多个冒号）
+								if strings.Count(forValue, ":") == 1 {
+									forValue = forValue[:colonIndex] // 移除端口号
+								}
+							}
+							remoteIP = forValue
+							break
+						}
+					}
+				}
+			default:
+				// 其他头部直接使用值
+				remoteIP = strings.TrimSpace(headerValue)
+			}
+			
+			// 验证获取到的IP是否有效且不是私有IP
 			if remoteIP != "" {
-				break
+				if testIP := net.ParseIP(remoteIP); testIP != nil && !isPrivateIP(testIP) {
+					break // 找到有效的公网IP，停止搜索
+				}
+				// 如果是私有IP，继续查找下一个头部
+				remoteIP = ""
 			}
 		}
 	}
+	
+	// 3. 如果所有头部都没有找到有效IP，使用RemoteAddr
 	if remoteIP == "" {
 		host, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
@@ -123,11 +207,33 @@ func ipFromRequest(headers []string, r *http.Request, customIP bool) (net.IP, er
 		}
 		remoteIP = host
 	}
+	
+	// 4. 解析最终的IP地址
 	ip := net.ParseIP(remoteIP)
 	if ip == nil {
 		return nil, fmt.Errorf("could not parse IP: %s", remoteIP)
 	}
+	
 	return ip, nil
+}
+
+// debugHeaders 输出请求中的所有IP相关头部（调试用）
+func debugHeaders(r *http.Request) {
+	relevantHeaders := []string{
+		"CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For", 
+		"X-Client-IP", "X-Forwarded", "X-Cluster-Client-IP",
+		"Forwarded-For", "Forwarded", "Remote-Addr",
+	}
+	
+	log.Printf("=== IP Headers Debug for %s ===", r.URL.Path)
+	log.Printf("RemoteAddr: %s", r.RemoteAddr)
+	
+	for _, header := range relevantHeaders {
+		if value := r.Header.Get(header); value != "" {
+			log.Printf("%s: %s", header, value)
+		}
+	}
+	log.Printf("=== End Debug ===")
 }
 
 func userAgentFromRequest(r *http.Request) string {

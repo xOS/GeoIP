@@ -141,7 +141,16 @@ func generateExampleConfig(filename string) error {
 		ListenAddress:       ":1212",
 		TemplateDir:         "html",
 		CacheSize:           1000,
-		TrustedHeaders:      []string{"X-Real-IP", "X-Forwarded-For"},
+		TrustedHeaders:      []string{
+			"CF-Connecting-IP",    // Cloudflare
+			"X-Real-IP",           // Nginx
+			"X-Forwarded-For",     // 标准代理头
+			"X-Client-IP",         // Apache
+			"X-Forwarded",         // 其他代理
+			"X-Cluster-Client-IP", // 集群环境
+			"Forwarded-For",       // RFC 7239
+			"Forwarded",           // RFC 7239
+		},
 		EnableReverseLookup: true,
 		EnablePortLookup:    true,
 		EnableProfiling:     true,
