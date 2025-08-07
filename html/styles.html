@@ -10,8 +10,8 @@
     --text-tertiary: #475569;
     --border-primary: rgba(15, 23, 42, 0.2);
     --border-secondary: rgba(15, 23, 42, 0.1);
-    --accent-primary: #3b82f6;
-    --accent-secondary: #8b5cf6;
+    --accent-primary: #03a9f4;
+    --accent-secondary: #FF9800;
     --glass-bg: rgba(255, 255, 255, 0.3);
     --glass-border: rgba(15, 23, 42, 0.2);
     --shadow-color: rgba(0, 0, 0, 0.1);
@@ -22,8 +22,8 @@
     --grid-color: rgba(15, 23, 42, 0.08);
     --ip-display-bg: rgba(255, 255, 255, 0.4);
     --ip-display-border: rgba(15, 23, 42, 0.3);
-    --copy-btn-bg: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    --copy-btn-hover: linear-gradient(135deg, #1d4ed8, #1e40af);
+    --copy-btn-bg: #FF9800;
+    --copy-btn-hover: #FF5722;
   }
 
   /* 暗色主题变量 */
@@ -49,8 +49,8 @@
     --grid-color: rgba(59, 130, 246, 0.03);
     --ip-display-bg: rgba(255, 255, 255, 0.2);
     --ip-display-border: rgba(255, 255, 255, 0.3);
-    --copy-btn-bg: linear-gradient(135deg, #10b981, #059669);
-    --copy-btn-hover: linear-gradient(135deg, #059669, #047857);
+    --copy-btn-bg: #FF9800;
+    --copy-btn-hover: #FF5722;
   }
 
   * {
@@ -271,7 +271,7 @@
 
   .search-btn {
     padding: 0.6rem;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    background: linear-gradient(135deg, #3b82f6, #00BCD4);
     border: none;
     color: white;
     cursor: pointer;
@@ -295,7 +295,7 @@
   }
 
   .search-btn:hover {
-    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    background: linear-gradient(135deg, #3b82f6, #00BCD4);
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
   }
@@ -323,8 +323,8 @@
   }
 
   .theme-toggle-btn:hover {
-    background: var(--accent-primary);
-    color: white;
+    /*background: var(--accent-primary);*/
+    /*color: white;*/
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
   }
@@ -405,7 +405,7 @@
     width: 100%;
     height: 2px;
     background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent);
-    animation: scan 3s infinite;
+    /*animation: scan 3s infinite;*/
   }
 
   @keyframes scan {
@@ -447,7 +447,7 @@
     content: '';
     width: 4px;
     height: 20px;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    background: linear-gradient(135deg, #03A9F4, #03A9F4);
     border-radius: 2px;
   }
 
@@ -477,7 +477,7 @@
     top: 0;
     bottom: 0;
     width: 3px;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    background: linear-gradient(135deg, #03A9F4, #03A9F4);
   }
 
   .info-item:hover {
@@ -712,7 +712,7 @@
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.3s ease;
-    border: 1px solid var(--accent-primary);
+    /*border: 1px solid #ff9800;*/
     display: flex;
     align-items: center;
     justify-content: center;
@@ -790,7 +790,7 @@
   .api-section h3 {
     font-size: 1rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: linear-gradient(135deg, #03A9F4, #03A9F4);
     margin-bottom: 0.75rem;
     display: flex;
     align-items: center;
@@ -801,7 +801,7 @@
     content: '';
     width: 4px;
     height: 16px;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    background: linear-gradient(135deg, #03A9F4, #03A9F4);
     border-radius: 2px;
   }
 
@@ -940,10 +940,10 @@
     transition: color 0.3s ease;
   }
 
-  .footer a:hover {
-    color: #60a5fa;
-    text-decoration: underline;
-  }
+  /*.footer a:hover {*/
+  /*  color: #60a5fa;*/
+  /*  text-decoration: underline;*/
+  /*}*/
 
   /* 中等屏幕图标优化 */
   @media (max-width: 600px) and (min-width: 401px) {
