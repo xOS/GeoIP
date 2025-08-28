@@ -63,7 +63,10 @@ func (c *CZDBReader) Proxy(ip net.IP) (Proxy, error) {
 	return Proxy{}, nil
 }
 
-
+// Network returns nil as CZDB does not expose network CIDR in this reader.
+func (c *CZDBReader) Network(ip net.IP) (*net.IPNet, error) {
+	return nil, nil
+}
 
 func (c *CZDBReader) IsEmpty() bool {
 	return c.searcher == nil

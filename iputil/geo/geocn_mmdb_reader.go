@@ -37,7 +37,7 @@ func NewGeoCNMMDBReader(path string) (*GeoCNMMDBReader, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &GeoCNMMDBReader{
 		reader: reader,
 	}, nil
@@ -49,18 +49,18 @@ func (g *GeoCNMMDBReader) Country(ip net.IP) (Country, error) {
 	if g.reader == nil {
 		return Country{}, fmt.Errorf("reader is nil")
 	}
-	
+
 	var record GeoCNRecord
 	err := g.reader.Lookup(ip, &record)
 	if err != nil {
 		return Country{}, err
 	}
-	
+
 	country := Country{}
 	if record.Country.ISOCode != "" {
 		country.ISO = record.Country.ISOCode
 	}
-	
+
 	// Try to get country name in Chinese first, then English
 	if len(record.Country.Names) > 0 {
 		if name, exists := record.Country.Names["zh-CN"]; exists {
@@ -69,7 +69,7 @@ func (g *GeoCNMMDBReader) Country(ip net.IP) (Country, error) {
 			country.Name = name
 		}
 	}
-	
+
 	return country, nil
 }
 
@@ -79,31 +79,31 @@ func (g *GeoCNMMDBReader) City(ip net.IP) (City, error) {
 	if g.reader == nil {
 		return City{}, fmt.Errorf("reader is nil")
 	}
-	
+
 	var record GeoCNRecord
 	err := g.reader.Lookup(ip, &record)
 	if err != nil {
 		return City{}, err
 	}
-	
+
 	city := City{}
 	city.Name = record.City
 	// 根据要求，province对应region
 	city.RegionName = record.Province
 	// 根据要求，districts对应district
 	city.District = record.Districts
-	
+
 	// Set coordinates if available
 	if record.Location.Latitude != 0 || record.Location.Longitude != 0 {
 		city.Latitude = record.Location.Latitude
 		city.Longitude = record.Location.Longitude
 	}
-	
+
 	// Set timezone if available
 	if record.Location.TimeZone != "" {
 		city.Timezone = record.Location.TimeZone
 	}
-	
+
 	return city, nil
 }
 
@@ -120,21 +120,21 @@ func (g *GeoCNMMDBReader) ISP(ip net.IP) (ISP, error) {
 	if g.reader == nil {
 		return ISP{}, fmt.Errorf("reader is nil")
 	}
-	
+
 	var record GeoCNRecord
 	err := g.reader.Lookup(ip, &record)
 	if err != nil {
 		return ISP{}, err
 	}
-	
+
 	isp := ISP{}
 	isp.ISP = record.ISP
-	
+
 	// If we have ISP info, also set the organization
 	if record.ISP != "" {
 		isp.Organization = record.ISP
 	}
-	
+
 	return isp, nil
 }
 
@@ -144,17 +144,17 @@ func (g *GeoCNMMDBReader) ConnectionType(ip net.IP) (ConnectionType, error) {
 	if g.reader == nil {
 		return ConnectionType{}, fmt.Errorf("reader is nil")
 	}
-	
+
 	var record GeoCNRecord
 	err := g.reader.Lookup(ip, &record)
 	if err != nil {
 		return ConnectionType{}, err
 	}
-	
+
 	connType := ConnectionType{}
 	// 根据要求，net对应ConnectionType
 	connType.ConnectionType = record.Net
-	
+
 	return connType, nil
 }
 
@@ -165,13 +165,30 @@ func (g *GeoCNMMDBReader) Proxy(ip net.IP) (Proxy, error) {
 	if g.reader == nil {
 		return Proxy{IsProxy: false}, nil
 	}
-	
+
 	// Even if reader is not nil, GeoCN.mmdb doesn't typically contain proxy information
 	return Proxy{IsProxy: false}, nil
 }
 
-
-
+// Network returns the network (CIDR) containing the IP if available.
+// This is a best-effort helper for tests; it returns nil when not available.
+func (g *GeoCNMMDBReader) Network(ip net.IP) (*net.IPNet, error) {
+	if g.reader == nil {
+		return nil, nil
+	}
+	var record GeoCNRecord
+	if err := g.reader.Lookup(ip, &record); err != nil {
+		return nil, err
+	}
+	if record.Network == "" {
+		return nil, nil
+	}
+	_, n, err := net.ParseCIDR(record.Network)
+	if err != nil {
+		return nil, nil
+	}
+	return n, nil
+}
 
 // IsEmpty returns true if the reader is empty
 func (g *GeoCNMMDBReader) IsEmpty() bool {

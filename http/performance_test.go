@@ -103,21 +103,7 @@ func BenchmarkStringOperations(b *testing.B) {
 		}
 	})
 
-	b.Run("CoordinateValidation", func(b *testing.B) {
-		testCases := []struct {
-			country  string
-			lat, lon float64
-		}{
-			{"US", 40.7128, -74.0060},
-			{"GB", 51.5074, -0.1278},
-			{"CN", 39.9042, 116.4074},
-		}
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			tc := testCases[i%len(testCases)]
-			validateCountryByCoordinates(tc.country, tc.lat, tc.lon)
-		}
-	})
+	// Removed coordinate validation micro-benchmark: logic no longer exists
 }
 
 // TestPerformanceRegression 性能回归测试

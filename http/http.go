@@ -48,7 +48,7 @@ type Response struct {
 	MetroCode      uint     `json:"metro_code,omitempty"`
 	PostalCode     string   `json:"zip_code,omitempty"`
 	City           string   `json:"city,omitempty"`
-	District         string   `json:"district,omitempty"`
+	District       string   `json:"district,omitempty"`
 	Latitude       float64  `json:"latitude,omitempty"`
 	Longitude      float64  `json:"longitude,omitempty"`
 	Timezone       string   `json:"time_zone,omitempty"`
@@ -101,7 +101,7 @@ func isPrivateIP(ip net.IP) bool {
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
 		return true
 	}
-	
+
 	// IPv4 私有地址范围
 	if ip4 := ip.To4(); ip4 != nil {
 		// 10.0.0.0/8
@@ -117,7 +117,7 @@ func isPrivateIP(ip net.IP) bool {
 			return true
 		}
 	}
-	
+
 	// IPv6 私有地址
 	if ip.To16() != nil && ip.To4() == nil {
 		// fc00::/7 (Unique Local Address)
@@ -125,7 +125,7 @@ func isPrivateIP(ip net.IP) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -136,14 +136,14 @@ func isPrivateIP(ip net.IP) bool {
 // * `customIP` - whether to allow the IP to be pulled from query parameters
 func ipFromRequest(headers []string, r *http.Request, customIP bool) (net.IP, error) {
 	remoteIP := ""
-	
+
 	// 1. 首先检查查询参数中的自定义IP
 	if customIP && r.URL != nil {
 		if v, ok := r.URL.Query()["ip"]; ok {
 			remoteIP = v[0]
 		}
 	}
-	
+
 	// 2. 如果没有自定义IP，按优先级检查HTTP头部
 	if remoteIP == "" {
 		for _, header := range headers {
@@ -151,10 +151,10 @@ func ipFromRequest(headers []string, r *http.Request, customIP bool) (net.IP, er
 			if headerValue == "" {
 				continue
 			}
-			
+
 			// 调试日志（可选，生产环境可以移除）
 			// log.Printf("检查头部 %s: %s", header, headerValue)
-			
+
 			// 处理不同类型的头部
 			canonicalHeader := http.CanonicalHeaderKey(header)
 			switch canonicalHeader {
@@ -187,7 +187,7 @@ func ipFromRequest(headers []string, r *http.Request, customIP bool) (net.IP, er
 				// 其他头部直接使用值
 				remoteIP = strings.TrimSpace(headerValue)
 			}
-			
+
 			// 验证获取到的IP是否有效且不是私有IP
 			if remoteIP != "" {
 				if testIP := net.ParseIP(remoteIP); testIP != nil && !isPrivateIP(testIP) {
@@ -198,7 +198,7 @@ func ipFromRequest(headers []string, r *http.Request, customIP bool) (net.IP, er
 			}
 		}
 	}
-	
+
 	// 3. 如果所有头部都没有找到有效IP，使用RemoteAddr
 	if remoteIP == "" {
 		host, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -207,27 +207,27 @@ func ipFromRequest(headers []string, r *http.Request, customIP bool) (net.IP, er
 		}
 		remoteIP = host
 	}
-	
+
 	// 4. 解析最终的IP地址
 	ip := net.ParseIP(remoteIP)
 	if ip == nil {
 		return nil, fmt.Errorf("could not parse IP: %s", remoteIP)
 	}
-	
+
 	return ip, nil
 }
 
 // debugHeaders 输出请求中的所有IP相关头部（调试用）
 func debugHeaders(r *http.Request) {
 	relevantHeaders := []string{
-		"CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For", 
+		"CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For",
 		"X-Client-IP", "X-Forwarded", "X-Cluster-Client-IP",
 		"Forwarded-For", "Forwarded", "Remote-Addr",
 	}
-	
+
 	log.Printf("=== IP Headers Debug for %s ===", r.URL.Path)
 	log.Printf("RemoteAddr: %s", r.RemoteAddr)
-	
+
 	for _, header := range relevantHeaders {
 		if value := r.Header.Get(header); value != "" {
 			log.Printf("%s: %s", header, value)
@@ -260,7 +260,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	var isp geo.ISP
 	var connectiontype geo.ConnectionType
 	var proxy geo.Proxy
-	
+
 	if hr, ok := s.gr.(interface {
 		GetMaxmind() geo.Reader
 		GetGeoCN() geo.Reader
@@ -279,7 +279,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 					isChinaIP = true
 				}
 			}
-			
+
 			if isChinaIP {
 				// 中国大陆IP：GeoCN.mmdb优先级最高，只有当GeoCN.mmdb字段为空时才用其他库填充
 				if hr.GetGeoCN() != nil {
@@ -289,9 +289,9 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 					isp, _ = hr.GetGeoCN().ISP(ip)
 					connectiontype, _ = hr.GetGeoCN().ConnectionType(ip)
 					proxy, _ = hr.GetGeoCN().Proxy(ip)
-					
+
 				}
-				
+
 				// 只有当GeoCN.mmdb的字段为空时，才用其他库补充
 				if country.Name == "" || country.ISO == "" {
 					var fallbackCountry geo.Country
@@ -305,7 +305,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 					if fallbackCountry.Name == "" && hr.GetMaxmind() != nil {
 						fallbackCountry, _ = hr.GetMaxmind().Country(ip)
 					}
-					
+
 					if country.Name == "" && fallbackCountry.Name != "" {
 						country.Name = fallbackCountry.Name
 					}
@@ -316,7 +316,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 						country.IsEU = fallbackCountry.IsEU
 					}
 				}
-				
+
 				// 补充城市信息
 				if city.Name == "" || city.RegionName == "" || city.Latitude == 0 || city.Longitude == 0 {
 					var fallbackCity geo.City
@@ -341,7 +341,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 							fallbackCity.Timezone = maxmindCity.Timezone
 						}
 					}
-					
+
 					if city.Name == "" && fallbackCity.Name != "" {
 						city.Name = fallbackCity.Name
 					}
@@ -362,7 +362,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 						city.PostalCode = fallbackCity.PostalCode
 					}
 				}
-				
+
 				// 补充ISP信息
 				if isp.ISP == "" || isp.Organization == "" || isp.ASN == 0 {
 					var fallbackISP geo.ISP
@@ -388,7 +388,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 							fallbackISP.ORG = maxmindISP.ORG
 						}
 					}
-					
+
 					if isp.ISP == "" && fallbackISP.ISP != "" {
 						isp.ISP = fallbackISP.ISP
 					}
@@ -402,7 +402,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 						isp.ORG = fallbackISP.ORG
 					}
 				}
-				
+
 				// 补充ASN信息
 				if asn.AutonomousSystemNumber == 0 || asn.AutonomousSystemOrganization == "" {
 					var fallbackASN geo.ASN
@@ -416,7 +416,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 					if fallbackASN.AutonomousSystemNumber == 0 && hr.GetMaxmind() != nil {
 						fallbackASN, _ = hr.GetMaxmind().ASN(ip)
 					}
-					
+
 					if asn.AutonomousSystemNumber == 0 && fallbackASN.AutonomousSystemNumber != 0 {
 						asn.AutonomousSystemNumber = fallbackASN.AutonomousSystemNumber
 					}
@@ -424,7 +424,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 						asn.AutonomousSystemOrganization = fallbackASN.AutonomousSystemOrganization
 					}
 				}
-				
+
 				// 补充连接类型信息
 				if connectiontype.ConnectionType == "" {
 					var fallbackConnType geo.ConnectionType
@@ -438,12 +438,12 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 					if fallbackConnType.ConnectionType == "" && hr.GetMaxmind() != nil {
 						fallbackConnType, _ = hr.GetMaxmind().ConnectionType(ip)
 					}
-					
+
 					if connectiontype.ConnectionType == "" && fallbackConnType.ConnectionType != "" {
 						connectiontype.ConnectionType = fallbackConnType.ConnectionType
 					}
 				}
-				
+
 			} else {
 				// 非中国大陆IP：使用MaxMind为主
 				if hr.GetMaxmind() != nil {
@@ -453,12 +453,11 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 					isp, _ = hr.GetMaxmind().ISP(ip)
 					connectiontype, _ = hr.GetMaxmind().ConnectionType(ip)
 					proxy, _ = hr.GetMaxmind().Proxy(ip)
-					
+
 				}
-				
+
 			}
-			
-			
+
 			// 应用翻译（如果有lang参数且为中文）
 			if lang == "zh" {
 				country.Name = GetTranslatedCountryName(country.ISO, lang, country.Name)
@@ -474,19 +473,10 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 				isp, _ = hr.GetMaxmind().ISP(ip)
 				connectiontype, _ = hr.GetMaxmind().ConnectionType(ip)
 				proxy, _ = hr.GetMaxmind().Proxy(ip)
-				
-				
-				// 验证国家代码与坐标的一致性
-				if !validateCountryByCoordinates(country.ISO, city.Latitude, city.Longitude) {
-					// 坐标与国家代码不匹配，使用坐标推断正确的国家
-					correctedISO, correctedName := getCountryByCoordinates(city.Latitude, city.Longitude, lang)
-					if correctedISO != "" {
-						country.ISO = correctedISO
-						country.Name = correctedName
-					}
-				}
+
+				// 保留 MaxMind 原始结果，不做基于坐标的国家纠正，避免误判
 			}
-			
+
 			// 用纯真库补全缺失的字段（如果有的话）
 			var fallbackReader geo.Reader
 			if hr.GetCzdbV4() != nil {
@@ -496,7 +486,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 			} else if hr.GetQQWry() != nil {
 				fallbackReader = hr.GetQQWry()
 			}
-			
+
 			if fallbackReader != nil {
 				if isp.ISP == "" {
 					fallbackISP, _ := fallbackReader.ISP(ip)
@@ -505,7 +495,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 					}
 				}
 			}
-			
+
 		}
 	} else {
 		// 之前的中国大陆 IP 逻辑不变（当没有 lang 参数时）
@@ -515,7 +505,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		isp, _ = s.gr.ISP(ip)
 		connectiontype, _ = s.gr.ConnectionType(ip)
 		proxy, _ = s.gr.Proxy(ip)
-		
+
 		// 如果有lang参数且为中文，应用翻译
 		if lang == "zh" {
 			country.Name = GetTranslatedCountryName(country.ISO, lang, country.Name)
@@ -523,6 +513,27 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 			city.Name = GetTranslatedCityName(country.ISO, city.Name, lang, city.Name)
 		}
 		// 如果lang参数为其他值或空字符串，默认返回英文结果，不应用任何翻译
+	}
+
+	// 统一翻译策略：
+	// - 若 lang=zh，强制中文翻译
+	// - 若 lang=en，保持原文
+	// - 若 lang 缺省或为其他值，且国家为 CN，则使用中文翻译；否则保持原文
+	shouldTranslateZH := false
+	switch strings.ToLower(lang) {
+	case "zh":
+		shouldTranslateZH = true
+	case "en":
+		shouldTranslateZH = false
+	default:
+		if strings.ToUpper(country.ISO) == "CN" {
+			shouldTranslateZH = true
+		}
+	}
+	if shouldTranslateZH {
+		country.Name = GetTranslatedCountryName(country.ISO, "zh", country.Name)
+		city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, "zh", city.RegionName)
+		city.Name = GetTranslatedCityName(country.ISO, city.Name, "zh", city.Name)
 	}
 	var hostname string
 	if s.LookupAddr != nil {
@@ -558,7 +569,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	threat := cleanProxyField(proxy.Threat)
 	provider := cleanProxyField(proxy.Provider)
 	fraudScore := cleanProxyField(proxy.FraudScore)
-	
+
 	response = Response{
 		IP:             ip,
 		IPDecimal:      ipDecimal,
@@ -570,7 +581,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		MetroCode:      city.MetroCode,
 		PostalCode:     city.PostalCode,
 		City:           city.Name,
-		District:         city.District,
+		District:       city.District,
 		Latitude:       city.Latitude,
 		Longitude:      city.Longitude,
 		Timezone:       city.Timezone,
@@ -1072,73 +1083,7 @@ func formatCoordinate(c float64) string {
 }
 
 // validateCountryByCoordinates 根据坐标验证国家代码是否合理
-func validateCountryByCoordinates(countryCode string, lat, lon float64) bool {
-	if lat == 0 && lon == 0 {
-		return true // 没有坐标信息，无法验证
-	}
-
-	// 定义一些主要国家的大致坐标范围
-	countryBounds := map[string][4]float64{
-		// [minLat, maxLat, minLon, maxLon]
-		"US": {24.0, 71.0, -180.0, -66.0},  // 美国（包括阿拉斯加和夏威夷）
-		"GB": {49.9, 60.9, -8.2, 1.8},      // 英国
-		"UK": {49.9, 60.9, -8.2, 1.8},      // 英国
-		"CN": {18.0, 54.0, 73.0, 135.0},    // 中国
-		"CA": {41.7, 83.1, -141.0, -52.6},  // 加拿大
-		"AU": {-43.6, -10.7, 113.3, 153.6}, // 澳大利亚
-		"DE": {47.3, 55.1, 5.9, 15.0},      // 德国
-		"FR": {41.3, 51.1, -5.1, 9.6},      // 法国
-		"JP": {24.0, 46.0, 123.0, 146.0},   // 日本
-		"KR": {33.0, 38.6, 124.6, 131.9},   // 韩国
-		"RU": {41.2, 81.9, 19.6, -169.0},   // 俄罗斯（跨越180度经线）
-		"IN": {6.7, 35.7, 68.0, 97.4},      // 印度
-		"BR": {-33.8, 5.3, -74.0, -28.8},   // 巴西
-		"IT": {35.5, 47.1, 6.6, 18.5},      // 意大利
-		"ES": {27.6, 43.8, -18.2, 4.3},     // 西班牙
-	}
-
-	bounds, exists := countryBounds[countryCode]
-	if !exists {
-		return true // 没有定义边界，假设正确
-	}
-
-	minLat, maxLat, minLon, maxLon := bounds[0], bounds[1], bounds[2], bounds[3]
-
-	// 特殊处理跨越180度经线的情况（如俄罗斯）
-	if minLon > maxLon {
-		return lat >= minLat && lat <= maxLat && (lon >= minLon || lon <= maxLon)
-	}
-
-	return lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon
-}
-
-// getCountryByCoordinates 根据坐标推断国家代码和名称
-func getCountryByCoordinates(lat, lon float64, lang string) (string, string) {
-	var countryCode, englishName string
-
-	// 检查主要国家的坐标范围
-	if lat >= 49.9 && lat <= 60.9 && lon >= -8.2 && lon <= 1.8 {
-		// 英国范围
-		countryCode, englishName = "GB", "United Kingdom"
-	} else if lat >= 33.0 && lat <= 38.6 && lon >= 124.6 && lon <= 131.9 {
-		// 韩国范围
-		countryCode, englishName = "KR", "South Korea"
-	} else if lat >= -43.6 && lat <= -10.7 && lon >= 113.3 && lon <= 153.6 {
-		// 澳大利亚范围
-		countryCode, englishName = "AU", "Australia"
-	} else {
-		// 默认返回空值，表示无法确定
-		return "", ""
-	}
-
-	// 使用翻译管理器获取翻译后的名称
-	if lang == "zh" {
-		translatedName := GetTranslatedCountryName(countryCode, lang, englishName)
-		return countryCode, translatedName
-	}
-
-	return countryCode, englishName
-}
+// 坐标-国家纠错逻辑已移除，避免跨库数据不一致导致误修正
 
 // getChineseCountryName 返回国家的中文名称，如果没有对应的中文名则返回英文名
 func getChineseCountryName(countryCode, englishName string) string {

@@ -451,7 +451,7 @@ func TestLangParameter(t *testing.T) {
 			// 创建一个测试服务器
 			ts := httptest.NewServer(s.Handler())
 			defer ts.Close()
-			
+
 			// 构建URL以指向测试服务器
 			url := ts.URL + "/json?ip=" + tt.ip
 			if tt.lang != "" {
@@ -472,7 +472,7 @@ func TestLangParameter(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer resp.Body.Close()
-			
+
 			// 检查响应状态码
 			if resp.StatusCode != http.StatusOK {
 				t.Errorf("Expected status OK, got %d", resp.StatusCode)
@@ -483,7 +483,7 @@ func TestLangParameter(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			
+
 			bodyStr := string(body)
 			if !strings.Contains(bodyStr, tt.expectedCountry) {
 				t.Errorf("Expected country %s not found in response: %s", tt.expectedCountry, bodyStr)
@@ -492,5 +492,73 @@ func TestLangParameter(t *testing.T) {
 				t.Errorf("Expected ISP %s not found in response: %s", tt.expectedISP, bodyStr)
 			}
 		})
+	}
+}
+
+// Mock readers for cross-country supplementation test
+type krMaxmind struct{}
+
+func (m *krMaxmind) Country(net.IP) (geo.Country, error) {
+	return geo.Country{Name: "South Korea", ISO: "KR"}, nil
+}
+func (m *krMaxmind) City(net.IP) (geo.City, error) {
+	return geo.City{Name: "Seoul", RegionName: "Seoul", Timezone: "Asia/Seoul"}, nil
+}
+func (m *krMaxmind) ASN(net.IP) (geo.ASN, error) {
+	return geo.ASN{AutonomousSystemNumber: 2914, AutonomousSystemOrganization: "NTT-LTD-2914"}, nil
+}
+func (m *krMaxmind) ISP(net.IP) (geo.ISP, error) {
+	return geo.ISP{ISP: "NTT Korea", Organization: "NTT Korea", ASN: 2914, ORG: "NTT-LTD-2914"}, nil
+}
+func (m *krMaxmind) ConnectionType(net.IP) (geo.ConnectionType, error) {
+	return geo.ConnectionType{ConnectionType: "Cable/DSL"}, nil
+}
+func (m *krMaxmind) Proxy(net.IP) (geo.Proxy, error) { return geo.Proxy{IsProxy: false}, nil }
+func (m *krMaxmind) IsEmpty() bool                   { return false }
+
+type cnReader struct{}
+
+func (c *cnReader) Country(net.IP) (geo.Country, error) {
+	return geo.Country{Name: "中国", ISO: "CN"}, nil
+}
+func (c *cnReader) City(net.IP) (geo.City, error) {
+	return geo.City{Name: "北京", RegionName: "北京", Timezone: "Asia/Shanghai"}, nil
+}
+func (c *cnReader) ASN(net.IP) (geo.ASN, error) {
+	return geo.ASN{AutonomousSystemNumber: 138199, AutonomousSystemOrganization: "Transatel"}, nil
+}
+func (c *cnReader) ISP(net.IP) (geo.ISP, error) {
+	return geo.ISP{ISP: "中国某运营商", Organization: "中国某运营商"}, nil
+}
+func (c *cnReader) ConnectionType(net.IP) (geo.ConnectionType, error) {
+	return geo.ConnectionType{ConnectionType: "Broadband"}, nil
+}
+func (c *cnReader) Proxy(net.IP) (geo.Proxy, error) { return geo.Proxy{IsProxy: false}, nil }
+func (c *cnReader) IsEmpty() bool                   { return false }
+
+// Ensure cross-country supplementation is blocked: when primary is non-CN,
+// do not take fields from a CN-only reader.
+func TestNoCrossCountrySupplement(t *testing.T) {
+	// Build a hybrid-like reader where MaxMind returns KR,
+	// while a CN reader would return CN for the same IP.
+	// Build a HybridReader with MaxMind=KR, GeoCN/CZDB/QQWry=CN
+	kr := &krMaxmind{}
+	cn := &cnReader{}
+	// Compose a custom hybrid: we rely on exported constructor
+	hybrid := geo.NewHybridReader(kr, cn, cn, cn, cn)
+
+	srv := &Server{cache: NewCache(0), gr: hybrid}
+	r := httptest.NewRequest("GET", "/json?ip=61.251.99.186&lang=zh", nil)
+	w := httptest.NewRecorder()
+	appErr := srv.JSONHandler(w, r)
+	if appErr != nil {
+		t.Fatalf("handler error: %v", appErr)
+	}
+	res := w.Result()
+	defer res.Body.Close()
+	body, _ := ioutil.ReadAll(res.Body)
+	s := string(body)
+	if strings.Contains(s, "北京") || strings.Contains(s, "Asia/Shanghai") || strings.Contains(s, "\"country_code\": \"CN\"") {
+		t.Fatalf("cross-country supplementation detected, response: %s", s)
 	}
 }
