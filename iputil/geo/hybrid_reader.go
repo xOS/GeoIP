@@ -91,12 +91,6 @@ func mergeCityWithPriority(primary City, supplements ...City) City {
 		if out.District == "" && c.District != "" {
 			out.District = c.District
 		}
-		if out.Latitude == 0 && c.Latitude != 0 {
-			out.Latitude = c.Latitude
-		}
-		if out.Longitude == 0 && c.Longitude != 0 {
-			out.Longitude = c.Longitude
-		}
 		if out.Timezone == "" && c.Timezone != "" {
 			out.Timezone = c.Timezone
 		}
@@ -215,6 +209,10 @@ func (h *HybridReader) City(ip net.IP) (City, error) {
 			primaryISO = strings.ToUpper(c.ISO)
 		}
 	}
+	var maxmindCity City
+	if h.maxmind != nil {
+		maxmindCity, _ = h.maxmind.City(ip)
+	}
 	var main City
 	var supplements []City
 	if primaryISO == "CN" {
@@ -239,15 +237,18 @@ func (h *HybridReader) City(ip net.IP) (City, error) {
 		}
 		// Optionally use MaxMind as the last resort for missing fields if ISO matches
 		if h.maxmind != nil && h.isoMatches(h.maxmind, ip, primaryISO) {
-			if c, err := h.maxmind.City(ip); err == nil {
-				supplements = append(supplements, c)
-			}
+			supplements = append(supplements, maxmindCity)
 		}
-		return mergeCityWithPriority(main, supplements...), nil
+		merged := mergeCityWithPriority(main, supplements...)
+		if h.maxmind != nil {
+			merged.Latitude = maxmindCity.Latitude
+			merged.Longitude = maxmindCity.Longitude
+		}
+		return merged, nil
 	}
 	// Non-CN: MaxMind primary; then geocn -> czdbV4 -> czdbV6 -> qqwry (ISO guard)
 	if h.maxmind != nil {
-		main, _ = h.maxmind.City(ip)
+		main = maxmindCity
 	}
 	if h.geocn != nil && h.isoMatches(h.geocn, ip, primaryISO) {
 		if c, err := h.geocn.City(ip); err == nil {
@@ -269,7 +270,12 @@ func (h *HybridReader) City(ip net.IP) (City, error) {
 			supplements = append(supplements, c)
 		}
 	}
-	return mergeCityWithPriority(main, supplements...), nil
+	merged := mergeCityWithPriority(main, supplements...)
+	if h.maxmind != nil {
+		merged.Latitude = maxmindCity.Latitude
+		merged.Longitude = maxmindCity.Longitude
+	}
+	return merged, nil
 }
 
 // ASN returns merged ASN information from all sources
