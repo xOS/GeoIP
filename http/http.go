@@ -274,10 +274,15 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 			// 当 lang=zh 时，对于中国大陆IP，GeoCN.mmdb优先级最高
 			// 判断是否为中国大陆IP
 			var isChinaIP bool
+			var maxmindCity geo.City
+			hasMaxmindCity := false
 			if hr.GetMaxmind() != nil {
-				maxmindCountry, err := hr.GetMaxmind().Country(ip)
-				if err == nil && strings.ToUpper(maxmindCountry.ISO) == "CN" {
+				if maxmindCountry, err := hr.GetMaxmind().Country(ip); err == nil && strings.ToUpper(maxmindCountry.ISO) == "CN" {
 					isChinaIP = true
+				}
+				if c, err := hr.GetMaxmind().City(ip); err == nil {
+					maxmindCity = c
+					hasMaxmindCity = true
 				}
 			}
 
@@ -328,15 +333,14 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 					} else if hr.GetQQWry() != nil {
 						fallbackCity, _ = hr.GetQQWry().City(ip)
 					}
-					if (fallbackCity.Name == "" || fallbackCity.Latitude == 0) && hr.GetMaxmind() != nil {
-						maxmindCity, _ := hr.GetMaxmind().City(ip)
+					if (fallbackCity.Name == "" || fallbackCity.Latitude == 0) && hasMaxmindCity {
 						if fallbackCity.Name == "" && maxmindCity.Name != "" {
 							fallbackCity.Name = maxmindCity.Name
 						}
 						if fallbackCity.RegionName == "" && maxmindCity.RegionName != "" {
 							fallbackCity.RegionName = maxmindCity.RegionName
 						}
-						if fallbackCity.Latitude == 0 && maxmindCity.Latitude != 0 {
+						if fallbackCity.Latitude == 0 && (maxmindCity.Latitude != 0 || maxmindCity.Longitude != 0) {
 							fallbackCity.Latitude = maxmindCity.Latitude
 							fallbackCity.Longitude = maxmindCity.Longitude
 							fallbackCity.Timezone = maxmindCity.Timezone
@@ -361,6 +365,16 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 					}
 					if city.PostalCode == "" && fallbackCity.PostalCode != "" {
 						city.PostalCode = fallbackCity.PostalCode
+					}
+				}
+
+				if hasMaxmindCity {
+					if maxmindCity.Latitude != 0 || maxmindCity.Longitude != 0 {
+						city.Latitude = maxmindCity.Latitude
+						city.Longitude = maxmindCity.Longitude
+					}
+					if maxmindCity.Timezone != "" {
+						city.Timezone = maxmindCity.Timezone
 					}
 				}
 
@@ -719,6 +733,15 @@ func (s *Server) CLIConnHandler(w http.ResponseWriter, r *http.Request) *appErro
 	return nil
 }
 
+func (s *Server) CLINetworkHandler(w http.ResponseWriter, r *http.Request) *appError {
+	response, err := s.newResponse(r)
+	if err != nil {
+		return badRequest(err).WithMessage(err.Error()).AsJSON()
+	}
+	fmt.Fprintf(w, "%s\n", response.Network)
+	return nil
+}
+
 func (s *Server) CLIProxyTypeHandler(w http.ResponseWriter, r *http.Request) *appError {
 	response, err := s.newResponse(r)
 	if err != nil {
@@ -1025,6 +1048,7 @@ func (s *Server) Handler() http.Handler {
 		r.Route("GET", "/isp", s.CLIISPHandler)
 		r.Route("GET", "/org", s.CLIORGHandler)
 		r.Route("GET", "/connection_type", s.CLIConnHandler)
+		r.Route("GET", "/network", s.CLINetworkHandler)
 		r.Route("GET", "/proxy_type", s.CLIProxyTypeHandler)
 		r.Route("GET", "/domain", s.CLIDomainHandler)
 		r.Route("GET", "/usage_type", s.CLIUsageTypeHandler)

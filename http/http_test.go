@@ -74,6 +74,27 @@ func (n *networkTestDb) Network(net.IP) (*net.IPNet, error) {
 	return cidr, nil
 }
 
+type stubReader struct {
+	country geo.Country
+	city    geo.City
+	asn     geo.ASN
+	isp     geo.ISP
+	conn    geo.ConnectionType
+	proxy   geo.Proxy
+	net     *net.IPNet
+}
+
+func (s *stubReader) Country(net.IP) (geo.Country, error) { return s.country, nil }
+func (s *stubReader) City(net.IP) (geo.City, error)       { return s.city, nil }
+func (s *stubReader) ASN(net.IP) (geo.ASN, error)         { return s.asn, nil }
+func (s *stubReader) Network(net.IP) (*net.IPNet, error)  { return s.net, nil }
+func (s *stubReader) ISP(net.IP) (geo.ISP, error)         { return s.isp, nil }
+func (s *stubReader) ConnectionType(net.IP) (geo.ConnectionType, error) {
+	return s.conn, nil
+}
+func (s *stubReader) Proxy(net.IP) (geo.Proxy, error) { return s.proxy, nil }
+func (s *stubReader) IsEmpty() bool                   { return false }
+
 // testHybridDb implements the interface needed for lang parameter testing
 type testHybridDb struct {
 	maxmind geo.Reader
@@ -272,6 +293,7 @@ func TestCLIHandlers(t *testing.T) {
 		{s.URL + "/city", "Bornyasherk\n", 200, "", ""},
 		{s.URL + "/foo", "404 page not found", 404, "", ""},
 		{s.URL + "/asn", "AS59795\n", 200, "", ""},
+		{s.URL + "/network", "\n", 200, "", ""},
 	}
 
 	for _, tt := range tests {
@@ -285,6 +307,25 @@ func TestCLIHandlers(t *testing.T) {
 		if out != tt.out {
 			t.Errorf("Expected %q, got %q", tt.out, out)
 		}
+	}
+}
+
+func TestCLINetworkHandlerReturnsCIDRWhenAvailable(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+	srv := testServer()
+	srv.gr = &networkTestDb{testDb: &testDb{}}
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	out, status, err := httpGet(ts.URL+"/network", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", status)
+	}
+	if want := "127.0.0.0/24\n"; out != want {
+		t.Fatalf("expected %q, got %q", want, out)
 	}
 }
 
@@ -526,6 +567,81 @@ func TestLangParameter(t *testing.T) {
 				t.Errorf("Expected ISP %s not found in response: %s", tt.expectedISP, bodyStr)
 			}
 		})
+	}
+}
+
+func TestLangZHUsesMaxMindCoordinates(t *testing.T) {
+	InitTranslations("")
+	maxmind := &stubReader{
+		country: geo.Country{Name: "CN", ISO: "CN"},
+		city: geo.City{
+			Name:      "MaxMind City",
+			Latitude:  30.1234,
+			Longitude: 120.5678,
+			Timezone:  "Asia/Shanghai",
+		},
+	}
+	geocn := &stubReader{
+		country: geo.Country{Name: "中国", ISO: "CN"},
+		city: geo.City{
+			Name:      "GeoCN City",
+			Latitude:  34.7732,
+			Longitude: 113.7220,
+			Timezone:  "Asia/Shanghai",
+		},
+	}
+	hs := geo.NewHybridReader(maxmind, geocn, nil, nil, nil)
+	srv := &Server{cache: NewCache(0), gr: hs, AllowCustomIP: true}
+	req := httptest.NewRequest("GET", "/json?ip=1.2.3.4&lang=zh", nil)
+	res := httptest.NewRecorder()
+	if err := srv.JSONHandler(res, req); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", res.Code)
+	}
+	var payload map[string]interface{}
+	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if got := payload["latitude"].(float64); got != 30.1234 {
+		t.Fatalf("expected latitude 30.1234, got %v", got)
+	}
+	if got := payload["longitude"].(float64); got != 120.5678 {
+		t.Fatalf("expected longitude 120.5678, got %v", got)
+	}
+}
+
+func TestLangZHFallsBackToGeoCNCoordinatesWhenMaxMindMissing(t *testing.T) {
+	InitTranslations("")
+	maxmind := &stubReader{
+		country: geo.Country{Name: "CN", ISO: "CN"},
+		city:    geo.City{Name: "MaxMind City"},
+	}
+	geocn := &stubReader{
+		country: geo.Country{Name: "中国", ISO: "CN"},
+		city: geo.City{
+			Name:      "GeoCN City",
+			Latitude:  34.7732,
+			Longitude: 113.7220,
+		},
+	}
+	hs := geo.NewHybridReader(maxmind, geocn, nil, nil, nil)
+	srv := &Server{cache: NewCache(0), gr: hs, AllowCustomIP: true}
+	req := httptest.NewRequest("GET", "/json?ip=1.2.3.4&lang=zh", nil)
+	res := httptest.NewRecorder()
+	if err := srv.JSONHandler(res, req); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var payload map[string]interface{}
+	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if got := payload["latitude"].(float64); got != 34.7732 {
+		t.Fatalf("expected latitude 34.7732, got %v", got)
+	}
+	if got := payload["longitude"].(float64); got != 113.7220 {
+		t.Fatalf("expected longitude 113.7220, got %v", got)
 	}
 }
 

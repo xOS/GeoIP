@@ -226,9 +226,6 @@ AS59795
 Proxy detection and security information:
 
 ```
-$ curl ifconfig.co/proxy
-false
-
 $ curl ifconfig.co/proxy_type
 VPN
 
@@ -266,8 +263,7 @@ $ curl -H 'Accept: application/json' ifconfig.co  # or curl ifconfig.co/json
   "isp_asn_org": "Google LLC",
   "isp_asn": "AS15169",
   "connection_type": "DCH",
-  "is_proxy": true,
-  "proxy_type": "PUB",
+  "network": "1.0.0.0/24",
   "domain": "example.com",
   "usage_type": "DCH",
   "last_seen": "30",
@@ -291,6 +287,10 @@ $ curl ifconfig.co/port/80
 Pass the appropriate flag (usually `-4` and `-6`) to your client to switch
 between IPv4 and IPv6 lookup.
 
+The `network` field reports the smallest CIDR prefix available across all loaded
+databases, so you always get the most specific network segment the stack can
+identify. When no provider supplies network information the field is omitted.
+
 ## Features
 
 * Easy to remember domain name
@@ -302,6 +302,7 @@ between IPv4 and IPv6 lookup.
 * Supports common command-line clients (e.g. `curl`, `httpie`, `ht`, `wget` and `fetch`)
 * JSON output
 * Complete geolocation data: country, region, city, ASN, ISP information
+* Includes originating network (CIDR) when available, automatically choosing the most specific prefix across providers
 * **Multi-format database support**: MMDB, BIN, CSV, IPDB, DAT formats
 * **Universal auto-detection**: All parameters support automatic format detection
 * **Smart fallback**: IP2Location data takes priority, falls back to MaxMind when needed
