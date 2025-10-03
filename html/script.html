@@ -301,11 +301,11 @@
     } else {
       safeUpdateInfoItemByLabel('经纬度', '');
     }
-    safeUpdateInfoItemByLabel('时区', data.time_zone);
     safeUpdateInfoItemByLabel('ASN', data.asn);
     safeUpdateInfoItemByLabel('服务商', data.isp);
     safeUpdateInfoItemByLabel('所属组织', data.org);
     safeUpdateInfoItemByLabel('网络类型', data.connection_type);
+    safeUpdateInfoItemByLabel('网段', data.network);
     safeUpdateInfoItemByLabel('主机名', data.hostname);
 
     // 设备 UA (特殊处理)
