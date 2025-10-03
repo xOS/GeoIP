@@ -59,7 +59,7 @@ type Response struct {
 	ISPO           string   `json:"isp_asn_org,omitempty"`
 	IN             string   `json:"isp_asn,omitempty"`
 	ConnectionType string   `json:"connection_type,omitempty"`
-	IsProxy        bool     `json:"is_proxy"`
+	Network        string   `json:"network,omitempty"`
 	ProxyType      string   `json:"proxy_type,omitempty"`
 	Domain         string   `json:"domain,omitempty"`
 	UsageType      string   `json:"usage_type,omitempty"`
@@ -260,6 +260,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	var isp geo.ISP
 	var connectiontype geo.ConnectionType
 	var proxy geo.Proxy
+	var networkCIDR string
 
 	if hr, ok := s.gr.(interface {
 		GetMaxmind() geo.Reader
@@ -535,6 +536,9 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, "zh", city.RegionName)
 		city.Name = GetTranslatedCityName(country.ISO, city.Name, "zh", city.Name)
 	}
+	if n, err := s.gr.Network(ip); err == nil && n != nil {
+		networkCIDR = n.String()
+	}
 	var hostname string
 	if s.LookupAddr != nil {
 		hostname, _ = s.LookupAddr(ip)
@@ -592,7 +596,7 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		ISP:            isp.ISP,
 		ORG:            asn.AutonomousSystemOrganization,
 		ConnectionType: connectiontype.ConnectionType,
-		IsProxy:        proxy.IsProxy,
+		Network:        networkCIDR,
 		ProxyType:      proxyType,
 		Domain:         domain,
 		UsageType:      usageType,
@@ -712,19 +716,6 @@ func (s *Server) CLIConnHandler(w http.ResponseWriter, r *http.Request) *appErro
 		return badRequest(err).WithMessage(err.Error()).AsJSON()
 	}
 	fmt.Fprintf(w, "%s\n", response.ConnectionType)
-	return nil
-}
-
-func (s *Server) CLIProxyHandler(w http.ResponseWriter, r *http.Request) *appError {
-	response, err := s.newResponse(r)
-	if err != nil {
-		return badRequest(err).WithMessage(err.Error()).AsJSON()
-	}
-	if response.IsProxy {
-		fmt.Fprintln(w, "true")
-	} else {
-		fmt.Fprintln(w, "false")
-	}
 	return nil
 }
 
@@ -1034,7 +1025,6 @@ func (s *Server) Handler() http.Handler {
 		r.Route("GET", "/isp", s.CLIISPHandler)
 		r.Route("GET", "/org", s.CLIORGHandler)
 		r.Route("GET", "/connection_type", s.CLIConnHandler)
-		r.Route("GET", "/proxy", s.CLIProxyHandler)
 		r.Route("GET", "/proxy_type", s.CLIProxyTypeHandler)
 		r.Route("GET", "/domain", s.CLIDomainHandler)
 		r.Route("GET", "/usage_type", s.CLIUsageTypeHandler)

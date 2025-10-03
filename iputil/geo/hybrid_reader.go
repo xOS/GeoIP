@@ -463,6 +463,83 @@ func (h *HybridReader) ConnectionType(ip net.IP) (ConnectionType, error) {
 	return ConnectionType{}, nil
 }
 
+// Network returns the containing network with ISO guard fallbacks.
+func (h *HybridReader) Network(ip net.IP) (*net.IPNet, error) {
+	type candidate struct {
+		net   *net.IPNet
+		order int
+	}
+	var (
+		primaryISO string
+		candidates []candidate
+		order      int
+	)
+	cloneNetwork := func(n *net.IPNet) *net.IPNet {
+		if n == nil {
+			return nil
+		}
+		masked := n.IP.Mask(n.Mask)
+		if masked == nil {
+			return nil
+		}
+		ipCopy := make(net.IP, len(masked))
+		copy(ipCopy, masked)
+		maskCopy := append(net.IPMask(nil), n.Mask...)
+		return &net.IPNet{IP: ipCopy, Mask: maskCopy}
+	}
+	if h.maxmind != nil {
+		if c, err := h.maxmind.Country(ip); err == nil {
+			primaryISO = strings.ToUpper(c.ISO)
+		}
+	}
+	appendCandidate := func(reader Reader, enforceISO bool) error {
+		if reader == nil {
+			order++
+			return nil
+		}
+		if enforceISO && !h.isoMatches(reader, ip, primaryISO) {
+			order++
+			return nil
+		}
+		n, err := reader.Network(ip)
+		if err != nil {
+			return err
+		}
+		if n != nil {
+			candidates = append(candidates, candidate{net: cloneNetwork(n), order: order})
+		}
+		order++
+		return nil
+	}
+	if err := appendCandidate(h.maxmind, false); err != nil {
+		return nil, err
+	}
+	readers := []Reader{h.geocn, h.czdbV4, h.czdbV6, h.qqwry}
+	for _, reader := range readers {
+		if err := appendCandidate(reader, true); err != nil {
+			return nil, err
+		}
+	}
+	bestOrder := -1
+	bestPrefix := -1
+	var bestNet *net.IPNet
+	for _, cand := range candidates {
+		if cand.net == nil || cand.net.Mask == nil {
+			continue
+		}
+		ones, bits := cand.net.Mask.Size()
+		if ones < 0 || bits <= 0 {
+			continue
+		}
+		if ones > bestPrefix || (ones == bestPrefix && (bestOrder == -1 || cand.order < bestOrder)) {
+			bestPrefix = ones
+			bestOrder = cand.order
+			bestNet = cand.net
+		}
+	}
+	return bestNet, nil
+}
+
 // Proxy returns proxy information using the appropriate reader
 func (h *HybridReader) Proxy(ip net.IP) (Proxy, error) {
 	reader := h.selectReader(ip)

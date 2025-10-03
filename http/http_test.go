@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -63,6 +64,15 @@ func (t *testDb) Proxy(net.IP) (geo.Proxy, error) {
 }
 
 func (t *testDb) IsEmpty() bool { return false }
+
+type networkTestDb struct {
+	*testDb
+}
+
+func (n *networkTestDb) Network(net.IP) (*net.IPNet, error) {
+	_, cidr, _ := net.ParseCIDR("127.0.0.0/24")
+	return cidr, nil
+}
 
 // testHybridDb implements the interface needed for lang parameter testing
 type testHybridDb struct {
@@ -295,7 +305,7 @@ func TestDisabledHandlers(t *testing.T) {
 		{s.URL + "/country", "404 page not found", 404},
 		{s.URL + "/country-code", "404 page not found", 404},
 		{s.URL + "/city", "404 page not found", 404},
-		{s.URL + "/json", "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"is_proxy\": false\n}", 200},
+		{s.URL + "/json", "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433\n}", 200},
 	}
 
 	for _, tt := range tests {
@@ -321,7 +331,7 @@ func TestJSONHandlers(t *testing.T) {
 		out    string
 		status int
 	}{
-		{s.URL, "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"country\": \"Elbonia\",\n  \"country_code\": \"EB\",\n  \"country_eu\": false,\n  \"region\": \"North Elbonia\",\n  \"region_code\": \"1234\",\n  \"metro_code\": 1234,\n  \"zip_code\": \"1234\",\n  \"city\": \"Bornyasherk\",\n  \"latitude\": 63.416667,\n  \"longitude\": 10.416667,\n  \"time_zone\": \"Europe/Bornyasherk\",\n  \"asn\": \"AS59795\",\n  \"isp\": \"Hosting4Real\",\n  \"org\": \"Hosting4Real\",\n  \"connection_type\": \"Corporate\",\n  \"is_proxy\": false,\n  \"hostname\": \"localhost\",\n  \"user_agent\": \"curl/7.2.6.0\"\n}", 200},
+		{s.URL, "{\n  \"ip\": \"127.0.0.1\",\n  \"ip_decimal\": 2130706433,\n  \"country\": \"Elbonia\",\n  \"country_code\": \"EB\",\n  \"country_eu\": false,\n  \"region\": \"North Elbonia\",\n  \"region_code\": \"1234\",\n  \"metro_code\": 1234,\n  \"zip_code\": \"1234\",\n  \"city\": \"Bornyasherk\",\n  \"latitude\": 63.416667,\n  \"longitude\": 10.416667,\n  \"time_zone\": \"Europe/Bornyasherk\",\n  \"asn\": \"AS59795\",\n  \"isp\": \"Hosting4Real\",\n  \"org\": \"Hosting4Real\",\n  \"connection_type\": \"Corporate\",\n  \"hostname\": \"localhost\",\n  \"user_agent\": \"curl/7.2.6.0\"\n}", 200},
 		{s.URL + "/port/foo", "{\n  \"status\": 400,\n  \"error\": \"invalid port: foo\"\n}", 400},
 		{s.URL + "/port/0", "{\n  \"status\": 400,\n  \"error\": \"invalid port: 0\"\n}", 400},
 		{s.URL + "/port/65537", "{\n  \"status\": 400,\n  \"error\": \"invalid port: 65537\"\n}", 400},
@@ -343,6 +353,30 @@ func TestJSONHandlers(t *testing.T) {
 		if out != tt.out {
 			t.Errorf("Expected %q for %s, got %q", tt.out, tt.url, out)
 		}
+	}
+}
+
+func TestJSONIncludesNetworkField(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+	srv := testServer()
+	srv.gr = &networkTestDb{testDb: &testDb{}}
+	s := httptest.NewServer(srv.Handler())
+	defer s.Close()
+	out, status, err := httpGet(s.URL, jsonMediaType, "curl/7.2.6.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", status)
+	}
+	var payload map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	if got, ok := payload["network"]; !ok {
+		t.Fatalf("expected network field in response: %s", out)
+	} else if got != "127.0.0.0/24" {
+		t.Fatalf("unexpected network value %v", got)
 	}
 }
 
@@ -513,8 +547,9 @@ func (m *krMaxmind) ISP(net.IP) (geo.ISP, error) {
 func (m *krMaxmind) ConnectionType(net.IP) (geo.ConnectionType, error) {
 	return geo.ConnectionType{ConnectionType: "Cable/DSL"}, nil
 }
-func (m *krMaxmind) Proxy(net.IP) (geo.Proxy, error) { return geo.Proxy{IsProxy: false}, nil }
-func (m *krMaxmind) IsEmpty() bool                   { return false }
+func (m *krMaxmind) Network(net.IP) (*net.IPNet, error) { return nil, nil }
+func (m *krMaxmind) Proxy(net.IP) (geo.Proxy, error)    { return geo.Proxy{IsProxy: false}, nil }
+func (m *krMaxmind) IsEmpty() bool                      { return false }
 
 type cnReader struct{}
 
@@ -533,8 +568,9 @@ func (c *cnReader) ISP(net.IP) (geo.ISP, error) {
 func (c *cnReader) ConnectionType(net.IP) (geo.ConnectionType, error) {
 	return geo.ConnectionType{ConnectionType: "Broadband"}, nil
 }
-func (c *cnReader) Proxy(net.IP) (geo.Proxy, error) { return geo.Proxy{IsProxy: false}, nil }
-func (c *cnReader) IsEmpty() bool                   { return false }
+func (c *cnReader) Network(net.IP) (*net.IPNet, error) { return nil, nil }
+func (c *cnReader) Proxy(net.IP) (geo.Proxy, error)    { return geo.Proxy{IsProxy: false}, nil }
+func (c *cnReader) IsEmpty() bool                      { return false }
 
 // Ensure cross-country supplementation is blocked: when primary is non-CN,
 // do not take fields from a CN-only reader.

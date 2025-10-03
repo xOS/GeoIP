@@ -46,12 +46,12 @@ func DetectDatabaseType(path string) (DatabaseType, error) {
 	filename := strings.ToLower(filepath.Base(path))
 
 	// Detect by file extension
-		switch ext {
-		case ".mmdb":
-			// GeoCN.mmdb 是 MaxMind MMDB 格式
-			return DatabaseTypeMaxMindMMDB, nil
-		case ".czdb":
-			return DatabaseTypeCZDB, nil // 新增 czdb 检测
+	switch ext {
+	case ".mmdb":
+		// GeoCN.mmdb 是 MaxMind MMDB 格式
+		return DatabaseTypeMaxMindMMDB, nil
+	case ".czdb":
+		return DatabaseTypeCZDB, nil // 新增 czdb 检测
 	case ".ipdb":
 		// Check if it's qqwry.ipdb format
 		if strings.Contains(filename, "qqwry") || strings.Contains(filename, "ipdb") {
@@ -161,12 +161,13 @@ type EmptyReader struct{}
 
 func (e *EmptyReader) Country(net.IP) (Country, error)               { return Country{}, nil }
 func (e *EmptyReader) City(net.IP) (City, error)                     { return City{}, nil }
+func (e *EmptyReader) Network(net.IP) (*net.IPNet, error)            { return nil, nil }
 func (e *EmptyReader) ASN(net.IP) (ASN, error)                       { return ASN{}, nil }
 func (e *EmptyReader) ISP(net.IP) (ISP, error)                       { return ISP{}, nil }
 func (e *EmptyReader) ConnectionType(net.IP) (ConnectionType, error) { return ConnectionType{}, nil }
 func (e *EmptyReader) Proxy(net.IP) (Proxy, error)                   { return Proxy{}, nil }
 
-func (e *EmptyReader) IsEmpty() bool                                 { return true }
+func (e *EmptyReader) IsEmpty() bool { return true }
 
 // OpenAuto automatically detects database types and creates appropriate readers
 func OpenAuto(databases ...string) (Reader, error) {
@@ -229,19 +230,19 @@ func GetDatabaseInfo(path string) (*DatabaseInfo, error) {
 	}
 
 	switch dbType {
-			case DatabaseTypeIP2ProxyBIN:
-				info.IsProxy = true
-				info.Provider = "IP2Location"
-			case DatabaseTypeIP2LocationBIN:
-				info.IsProxy = false
-				info.Provider = "IP2Location"
-			case DatabaseTypeMaxMindMMDB:
-				info.IsProxy = false
-				info.Provider = "MaxMind"
-			case DatabaseTypeQQWryIPDB:
-				info.IsProxy = false
-				info.Provider = "IPIP.net"
-			}
+	case DatabaseTypeIP2ProxyBIN:
+		info.IsProxy = true
+		info.Provider = "IP2Location"
+	case DatabaseTypeIP2LocationBIN:
+		info.IsProxy = false
+		info.Provider = "IP2Location"
+	case DatabaseTypeMaxMindMMDB:
+		info.IsProxy = false
+		info.Provider = "MaxMind"
+	case DatabaseTypeQQWryIPDB:
+		info.IsProxy = false
+		info.Provider = "IPIP.net"
+	}
 
 	return info, nil
 }

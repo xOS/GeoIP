@@ -108,6 +108,23 @@ func (c *CombinedReader) ConnectionType(ip net.IP) (ConnectionType, error) {
 	return ConnectionType{}, nil
 }
 
+// Network returns the containing network, preferring GeoIP data first.
+func (c *CombinedReader) Network(ip net.IP) (*net.IPNet, error) {
+	if c.geoip != nil {
+		n, err := c.geoip.Network(ip)
+		if err != nil {
+			return nil, err
+		}
+		if n != nil {
+			return n, nil
+		}
+	}
+	if c.ip2proxy != nil {
+		return c.ip2proxy.Network(ip)
+	}
+	return nil, nil
+}
+
 // Proxy returns proxy information from IP2Proxy
 func (c *CombinedReader) Proxy(ip net.IP) (Proxy, error) {
 	if c.ip2proxy != nil {
@@ -115,8 +132,6 @@ func (c *CombinedReader) Proxy(ip net.IP) (Proxy, error) {
 	}
 	return Proxy{}, nil
 }
-
-
 
 // IsEmpty returns true if both readers are empty
 func (c *CombinedReader) IsEmpty() bool {

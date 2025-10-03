@@ -11,6 +11,7 @@ import (
 type Reader interface {
 	Country(net.IP) (Country, error)
 	City(net.IP) (City, error)
+	Network(net.IP) (*net.IPNet, error)
 	ASN(net.IP) (ASN, error)
 	ISP(net.IP) (ISP, error)
 	ConnectionType(net.IP) (ConnectionType, error)
@@ -86,10 +87,10 @@ func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string,
 	var maxmindReader Reader
 	var ip2Reader Reader
 	var qqwryReader Reader
-	
+
 	// Process MaxMind databases
 	var country, city, asn, isp, connectiontype *maxminddb.Reader
-	
+
 	// Auto-detect and load each database
 	databases := map[string]*string{
 		"country":        &countryDB,
@@ -278,23 +279,23 @@ func OpenWithHybridMode(countryDB, cityDB string, asnDB string, ispDB string, co
 		}
 	}
 	if geocnMMDB != "" {
-			reader, err := openDatabaseWithDebug(geocnMMDB, func(p string) (interface{}, error) { return CreateReader(p) }, "GeoCN MMDB DB")
-			if err == nil {
-				geocnReader = reader.(Reader)
-			}
+		reader, err := openDatabaseWithDebug(geocnMMDB, func(p string) (interface{}, error) { return CreateReader(p) }, "GeoCN MMDB DB")
+		if err == nil {
+			geocnReader = reader.(Reader)
 		}
-		if ip2proxyDB != "" {
-			reader, err := openDatabaseWithDebug(ip2proxyDB, func(p string) (interface{}, error) { return CreateReader(p) }, "IP2Proxy BIN DB")
-			if err == nil {
-				ip2proxyReader = reader.(Reader)
-			}
+	}
+	if ip2proxyDB != "" {
+		reader, err := openDatabaseWithDebug(ip2proxyDB, func(p string) (interface{}, error) { return CreateReader(p) }, "IP2Proxy BIN DB")
+		if err == nil {
+			ip2proxyReader = reader.(Reader)
 		}
+	}
 
 	hybrid := NewHybridReader(maxmindReader, geocnReader, czdbV4Reader, czdbV6Reader, qqwryReader)
-		if ip2proxyReader != nil {
-			return NewCombinedReader(hybrid, ip2proxyReader), nil
-		}
-		return hybrid, nil
+	if ip2proxyReader != nil {
+		return NewCombinedReader(hybrid, ip2proxyReader), nil
+	}
+	return hybrid, nil
 }
 
 // maxminddbOpen 用于加载 MaxMind mmdb 文件
@@ -307,7 +308,7 @@ func (g *geoip) Country(ip net.IP) (Country, error) {
 	if g.country == nil {
 		return country, nil
 	}
-	
+
 	// 定义用于解析 MaxMind Country 数据库的结构体
 	var record struct {
 		Country struct {
@@ -321,12 +322,12 @@ func (g *geoip) Country(ip net.IP) (Country, error) {
 			Names             map[string]string `maxminddb:"names"`
 		} `maxminddb:"registered_country"`
 	}
-	
+
 	err := g.country.Lookup(ip, &record)
 	if err != nil {
 		return country, err
 	}
-	
+
 	if c, exists := record.Country.Names["en"]; exists {
 		country.Name = c
 	}
@@ -349,7 +350,7 @@ func (g *geoip) City(ip net.IP) (City, error) {
 	if g.city == nil {
 		return city, nil
 	}
-	
+
 	// 定义用于解析 MaxMind City 数据库的结构体
 	var record struct {
 		City struct {
@@ -372,12 +373,12 @@ func (g *geoip) City(ip net.IP) (City, error) {
 			IsoCode string `maxminddb:"iso_code"`
 		} `maxminddb:"country"`
 	}
-	
+
 	err := g.city.Lookup(ip, &record)
 	if err != nil {
 		return city, err
 	}
-	
+
 	if c, exists := record.City.Names["en"]; exists {
 		city.Name = c
 	}
@@ -405,7 +406,7 @@ func (g *geoip) City(ip net.IP) (City, error) {
 	if record.Location.TimeZone != "" {
 		city.Timezone = record.Location.TimeZone
 	}
-	
+
 	return city, nil
 }
 
@@ -414,13 +415,13 @@ func (g *geoip) ASN(ip net.IP) (ASN, error) {
 	if g.asn == nil {
 		return asn, nil
 	}
-	
+
 	// 定义用于解析 MaxMind ASN 数据库的结构体
 	var record struct {
 		AutonomousSystemNumber       uint   `maxminddb:"autonomous_system_number"`
 		AutonomousSystemOrganization string `maxminddb:"autonomous_system_organization"`
 	}
-	
+
 	err := g.asn.Lookup(ip, &record)
 	if err != nil {
 		return asn, err
@@ -439,7 +440,7 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 	if g.isp == nil {
 		return isp, nil
 	}
-	
+
 	// 定义用于解析 MaxMind ISP 数据库的结构体
 	var record struct {
 		ISP                          string `maxminddb:"isp"`
@@ -447,7 +448,7 @@ func (g *geoip) ISP(ip net.IP) (ISP, error) {
 		AutonomousSystemNumber       uint   `maxminddb:"autonomous_system_number"`
 		AutonomousSystemOrganization string `maxminddb:"autonomous_system_organization"`
 	}
-	
+
 	err := g.isp.Lookup(ip, &record)
 	if err != nil {
 		return isp, err
@@ -472,12 +473,12 @@ func (g *geoip) ConnectionType(ip net.IP) (ConnectionType, error) {
 	if g.connectiontype == nil {
 		return connectiontype, nil
 	}
-	
+
 	// 定义用于解析 MaxMind ConnectionType 数据库的结构体
 	var record struct {
 		ConnectionType string `maxminddb:"connection_type"`
 	}
-	
+
 	err := g.connectiontype.Lookup(ip, &record)
 	if err != nil {
 		return connectiontype, err
@@ -488,15 +489,34 @@ func (g *geoip) ConnectionType(ip net.IP) (ConnectionType, error) {
 	return connectiontype, nil
 }
 
+func (g *geoip) Network(ip net.IP) (*net.IPNet, error) {
+	var reader *maxminddb.Reader
+	for _, candidate := range []*maxminddb.Reader{g.city, g.country, g.asn, g.isp, g.connectiontype} {
+		if candidate != nil {
+			reader = candidate
+			break
+		}
+	}
+	if reader == nil {
+		return nil, nil
+	}
+	var placeholder struct{}
+	network, ok, err := reader.LookupNetwork(ip, &placeholder)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, nil
+	}
+	return network, nil
+}
+
 func (g *geoip) Proxy(ip net.IP) (Proxy, error) {
 	proxy := Proxy{}
 	// For now, return empty proxy info since this is for MaxMind databases
 	// IP2Proxy functionality will be implemented separately
 	return proxy, nil
 }
-
-
-
 
 func (g *geoip) IsEmpty() bool {
 	return g.country == nil && g.city == nil
