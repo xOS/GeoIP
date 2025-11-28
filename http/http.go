@@ -890,11 +890,29 @@ func (s *Server) StaticFileHandler(w http.ResponseWriter, r *http.Request) *appE
 		return notFound(nil)
 	}
 
-	// 构建文件路径
-	filePath := s.Template + "/" + filename
+	// 安全检查：防止路径遍历攻击
+	if strings.Contains(filename, "..") {
+		return notFound(nil)
+	}
 
-	// 检查文件是否存在
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+	// 构建文件路径
+	filePath := filepath.Join(s.Template, filename)
+
+	// 打开文件
+	file, err := os.Open(filePath)
+	if err != nil {
+		return notFound(nil)
+	}
+	defer file.Close()
+
+	// 获取文件信息
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return notFound(nil)
+	}
+
+	// 确保不是目录
+	if fileInfo.IsDir() {
 		return notFound(nil)
 	}
 
@@ -921,8 +939,8 @@ func (s *Server) StaticFileHandler(w http.ResponseWriter, r *http.Request) *appE
 	// 设置缓存头
 	w.Header().Set("Cache-Control", "public, max-age=86400") // 缓存1天
 
-	// 提供文件
-	http.ServeFile(w, r, filePath)
+	// 直接提供文件内容
+	http.ServeContent(w, r, filename, fileInfo.ModTime(), file)
 	return nil
 }
 
