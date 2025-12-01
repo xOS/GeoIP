@@ -1,7 +1,7 @@
 <style>
   :root {
     /* macOS 亮色主题变量 */
-    --bg-primary: linear-gradient(180deg, #f5f5f7 0%, #e8e8ed 100%);
+    --bg-primary: #f5f5f7;
     --bg-secondary: rgba(255, 255, 255, 0.85);
     --bg-tertiary: rgba(250, 250, 252, 0.9);
     --bg-quaternary: rgba(245, 245, 247, 0.85);
@@ -39,7 +39,7 @@
 
   /* macOS 暗色主题变量 */
   [data-theme="dark"] {
-    --bg-primary: linear-gradient(180deg, #1c1c1e 0%, #2c2c2e 100%);
+    --bg-primary: #1c1c1e;
     --bg-secondary: rgba(44, 44, 46, 0.85);
     --bg-tertiary: rgba(58, 58, 60, 0.85);
     --bg-quaternary: rgba(44, 44, 46, 0.75);
@@ -98,22 +98,6 @@
     50% {
       transform: translateY(-30px) rotate(180deg);
     }
-  }
-
-  /* 添加网格背景效果 */
-  .main-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image:
-      linear-gradient(var(--grid-color) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-    background-size: 20px 20px;
-    pointer-events: none;
-    z-index: -1;
   }
 
   /* 主容器 */
@@ -253,35 +237,40 @@
     line-height: 1.4;
   }
 
+  /* 搜索按钮 - 独立样式，与主题切换按钮一致 */
   .search-btn {
     padding: 0.55rem;
-    background: var(--search-btn-bg);
-    border: none;
-    color: white;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    margin: 4px;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
+    position: relative;
+    overflow: hidden;
     flex-shrink: 0;
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 44px;
+    min-height: 44px;
+    box-shadow: var(--shadow-sm);
   }
 
   .search-btn svg {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     transition: all 0.2s ease;
   }
 
   .search-btn:hover {
-    background: var(--search-btn-hover);
+    background: var(--bg-tertiary);
     transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35);
+    box-shadow: var(--shadow-md);
   }
 
   .search-btn:active {
@@ -782,10 +771,9 @@
   /* JSON 面板 */
   .copy-btn {
     padding: 0.5rem;
-    background: var(--copy-btn-bg);
-    color: white;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
     border: none;
-    border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
@@ -793,15 +781,11 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    box-shadow: 0 1px 3px rgba(0, 122, 255, 0.3);
-    position: relative;
-    overflow: hidden;
   }
 
   .copy-btn:hover {
-    background: var(--copy-btn-hover);
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+    color: rgba(255, 255, 255, 0.9);
+    transform: scale(1.1);
   }
 
   .copy-btn:active {
@@ -820,6 +804,15 @@
     margin-bottom: 1rem;
     overflow-x: auto;
     border: 1px solid rgba(100, 150, 255, 0.15);
+    position: relative;
+  }
+
+  /* JSON 面板复制按钮 - 定位在代码块右上角 */
+  .json-container .copy-btn {
+    position: absolute;
+    top: 0.1rem;
+    right: 0.1rem;
+    z-index: 10;
   }
 
   .json-content {
@@ -994,7 +987,7 @@
   .footer {
     text-align: center;
     color: var(--text-tertiary);
-    padding: 1.25rem 0;
+    padding: 0.5rem 0;
     border-top: 1px solid var(--border-secondary);
     font-size: 0.75rem;
   }

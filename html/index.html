@@ -29,16 +29,17 @@
         <!-- 顶部查询框和主题切换 -->
         <div class="top-query-section">
           <div class="search-container">
-            <input id="ipInput" type="text" placeholder="输入 IP 地址查询其他位置" class="search-input"
+            <input id="ipInput" type="text" placeholder="输入 IP 地址查询其它位置" class="search-input"
               onkeyup="updateIP(this.value)" />
-            <button type="button" class="search-btn" onclick="navigate()">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-            </button>
           </div>
+          <!-- 搜索按钮 -->
+          <button type="button" class="search-btn" onclick="navigate()" title="查询">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+          </button>
           <!-- 主题切换按钮 -->
           <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="切换主题">
             <svg class="theme-icon moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -112,11 +113,11 @@
             <span class="info-value">{{ .ISP }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">所属组织</span>
+            <span class="info-label">组织</span>
             <span class="info-value">{{ .ORG }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">网络类型</span>
+            <span class="info-label">类型</span>
             <span class="info-value">{{ .ConnectionType }}</span>
           </div>
           <div class="info-item">
@@ -165,19 +166,17 @@
               <span class="window-dot minimize"></span>
               <span class="window-dot maximize"></span>
             </div>
-            <div class="panel-title-with-action">
-              <h2>JSON 响应</h2>
-              <button class="copy-btn" onclick="copyJSON()" title="复制 JSON">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-              </button>
-            </div>
+            <h2>JSON 响应</h2>
           </div>
         </div>
         <div class="json-container">
+          <button class="copy-btn" onclick="copyJSON()" title="复制 JSON">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          </button>
           <pre id="jsonOutput" class="json-content">{{ .JSON }}</pre>
         </div>
 
