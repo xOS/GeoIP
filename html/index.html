@@ -9,7 +9,6 @@
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://s4.zstatic.net/ajax/libs/maplibre-gl/5.6.1/maplibre-gl.min.css" rel="stylesheet" />
 
   {{ template "script.html" . }} {{ template "styles.html" . }}
 </head>
@@ -135,18 +134,9 @@
           </div>
         </div>
 
-        <!-- 地图和捐助区域 -->
+        <!-- 捐助区域 -->
         <div class="location-section">
           <div class="button-row">
-            <button class="map-btn" onclick="showMap()" title="查看地图 - MapTiler Basic v2 简化版">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path
-                  d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-              </svg>
-              查看地图
-              <span class="map-feature-badge">MapTiler</span>
-            </button>
-
             <a href="https://donate.stripe.com/28obMffW78Pogb6145" target="_blank" class="sponsor-btn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
@@ -218,23 +208,6 @@
       <p>本站由 <a href="https://www.nange.cn" target="_blank">楠格</a> 运营维护</p>
     </footer>
 
-    <!-- 地图模态框 -->
-    <div id="mapModal" class="map-modal" onclick="closeMap()">
-      <div class="map-container" onclick="event.stopPropagation()">
-        <button class="close-btn floating-close-btn" onclick="closeMap()" aria-label="关闭地图">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="11" class="close-btn-bg" />
-            <line x1="8" y1="8" x2="16" y2="16" />
-            <line x1="16" y1="8" x2="8" y2="16" />
-          </svg>
-        </button>
-        
-
-        
-        <div id="mapFrame" class="map-frame"></div>
-      </div>
-    </div>
   </div>
 </body>
 
