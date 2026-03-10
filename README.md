@@ -1,10 +1,6 @@
 # GeoIP
-
-[![Build GeoIP And Push](https://github.com/xOS/GeoIP/actions/workflows/Push.yml/badge.svg)](https://github.com/xOS/GeoIP/actions/workflows/Push.yml)
-[![GeoIP Release](https://github.com/xOS/GeoIP/actions/workflows/Build.yml/badge.svg)](https://github.com/xOS/GeoIP/actions/workflows/Build.yml)
-
 A simple service for looking up your IP address. This is the code that powers
-https://ifconfig.co.
+[https://api.aapls.com](https://api.aapls.com/).
 
 ## 🚀 快速开始
 
@@ -333,18 +329,6 @@ This package can be installed with `go get`:
 For more information on building a Go project, see the [official Go
 documentation](https://golang.org/doc/code.html).
 
-## Docker image
-
-A Docker image is available on [Docker
-Hub](https://hub.docker.com/r/mpolden/geoip), which can be downloaded with:
-
-`docker pull mpolden/geoip`
-
-## Deploying to Heroku
-
-Click the button below to automatically build and deploy the application to Heroku
-
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 ### Usage
 
