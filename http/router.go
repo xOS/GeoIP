@@ -48,6 +48,16 @@ func (r *router) Handler() http.Handler {
 	})
 }
 
+// headResponseWriter wraps http.ResponseWriter to discard the body for HEAD requests.
+// Headers and status code are still sent.
+type headResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w *headResponseWriter) Write(b []byte) (int, error) {
+	return len(b), nil // discard body, pretend it was written
+}
+
 func (r *route) Header(header, value string) {
 	r.MatcherFunc(func(req *http.Request) bool {
 		return req.Header.Get(header) == value
@@ -60,7 +70,10 @@ func (r *route) MatcherFunc(f func(*http.Request) bool) {
 
 func (r *route) match(req *http.Request) bool {
 	if req.Method != r.method {
-		return false
+		// Allow HEAD requests to match GET routes
+		if !(req.Method == "HEAD" && r.method == "GET") {
+			return false
+		}
 	}
 	if r.prefix {
 		if !strings.HasPrefix(req.URL.Path, r.path) {

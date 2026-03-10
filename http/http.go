@@ -1018,6 +1018,10 @@ func wrapHandlerFunc(f http.HandlerFunc) appHandler {
 }
 
 func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// For HEAD requests, wrap the writer to suppress the response body
+	if r.Method == "HEAD" {
+		w = &headResponseWriter{w}
+	}
 	if e := fn(w, r); e != nil { // e is *appError
 		if e.Code/100 == 5 {
 			log.Println(e.Error)
