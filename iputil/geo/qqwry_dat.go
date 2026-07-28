@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 
 	"github.com/yinheli/qqwry"
 )
 
 // QQWryDatReader implements Reader interface for qqwry.dat format
 type QQWryDatReader struct {
+	mu sync.Mutex
 	db *qqwry.QQwry
 }
 
@@ -25,15 +27,18 @@ func NewQQWryDatReader(path string) (Reader, error) {
 
 // Country returns country information from qqwry.dat
 func (q *QQWryDatReader) Country(ip net.IP) (Country, error) {
+	if ip.To4() == nil {
+		return Country{}, nil
+	}
+	q.mu.Lock()
 	q.db.Find(ip.String())
-
-	country := Country{}
-	// qqwry.dat typically shows China for most Chinese IPs
-	// Parse the location string to extract country info
 	location := q.db.City
 	if location == "" {
 		location = q.db.Country
 	}
+	q.mu.Unlock()
+
+	country := Country{}
 
 	// Most qqwry.dat entries are for China
 	if strings.Contains(location, "中国") ||
@@ -101,13 +106,16 @@ func (q *QQWryDatReader) Country(ip net.IP) (Country, error) {
 
 // City returns city information from qqwry.dat
 func (q *QQWryDatReader) City(ip net.IP) (City, error) {
+	if ip.To4() == nil {
+		return City{}, nil
+	}
+	q.mu.Lock()
 	q.db.Find(ip.String())
-
-	city := City{}
-
-	// Parse country and city fields to extract city and region
 	country := q.db.Country
 	area := q.db.City
+	q.mu.Unlock()
+
+	city := City{}
 
 	// Try to extract province/region and city from the location strings
 	location := country + " " + area
@@ -181,12 +189,16 @@ func (q *QQWryDatReader) ASN(ip net.IP) (ASN, error) {
 
 // ISP returns ISP information from qqwry.dat
 func (q *QQWryDatReader) ISP(ip net.IP) (ISP, error) {
+	if ip.To4() == nil {
+		return ISP{}, nil
+	}
+	q.mu.Lock()
 	q.db.Find(ip.String())
+	location := q.db.Country + " " + q.db.City
+	cityField := q.db.City
+	q.mu.Unlock()
 
 	isp := ISP{}
-
-	// Extract ISP information from country and city fields
-	location := q.db.Country + " " + q.db.City
 
 	// Common Chinese ISPs
 	if strings.Contains(location, "电信") {
@@ -212,9 +224,9 @@ func (q *QQWryDatReader) ISP(ip net.IP) (ISP, error) {
 		isp.Organization = "方正宽带网络服务有限公司"
 	} else {
 		// Use city field as ISP if it contains ISP-like information
-		if q.db.City != "" && q.db.City != "CZ88.NET" {
-			isp.ISP = q.db.City
-			isp.Organization = q.db.City
+		if cityField != "" && cityField != "CZ88.NET" {
+			isp.ISP = cityField
+			isp.Organization = cityField
 		}
 	}
 

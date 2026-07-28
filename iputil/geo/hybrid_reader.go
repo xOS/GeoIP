@@ -76,9 +76,129 @@ func mergeCountryWithPriority(primary Country, supplements ...Country) Country {
 	return out
 }
 
+// provinceEquiv defines mapping of Chinese province names, pinyin, and ISO 3166-2 codes
+var provinceEquiv = []map[string]bool{
+	{"北京": true, "beijing": true, "bj": true, "11": true},
+	{"天津": true, "tianjin": true, "tj": true, "12": true},
+	{"河北": true, "hebei": true, "he": true, "13": true},
+	{"山西": true, "shanxi": true, "sx": true, "14": true},
+	{"内蒙古": true, "内蒙": true, "neimenggu": true, "inner mongolia": true, "nm": true, "15": true},
+	{"辽宁": true, "liaoning": true, "ln": true, "21": true},
+	{"吉林": true, "jilin": true, "jl": true, "22": true},
+	{"黑龙江": true, "heilongjiang": true, "hl": true, "23": true},
+	{"上海": true, "shanghai": true, "sh": true, "31": true},
+	{"江苏": true, "jiangsu": true, "js": true, "32": true},
+	{"浙江": true, "zhejiang": true, "zj": true, "33": true},
+	{"安徽": true, "anhui": true, "ah": true, "34": true},
+	{"福建": true, "fujian": true, "fj": true, "35": true},
+	{"江西": true, "jiangxi": true, "jx": true, "36": true},
+	{"山东": true, "shandong": true, "sd": true, "37": true},
+	{"河南": true, "henan": true, "ha": true, "41": true},
+	{"湖北": true, "hubei": true, "hb": true, "42": true},
+	{"湖南": true, "hunan": true, "hn": true, "43": true},
+	{"广东": true, "guangdong": true, "gd": true, "44": true},
+	{"广西": true, "guangxi": true, "gx": true, "45": true},
+	{"海南": true, "hainan": true, "hi": true, "46": true},
+	{"重庆": true, "chongqing": true, "cq": true, "50": true},
+	{"四川": true, "sichuan": true, "sc": true, "51": true},
+	{"贵州": true, "guizhou": true, "gz": true, "52": true},
+	{"云南": true, "yunnan": true, "yn": true, "53": true},
+	{"西藏": true, "xizang": true, "tibet": true, "xz": true, "54": true},
+	{"陕西": true, "shaanxi": true, "sn": true, "61": true},
+	{"甘肃": true, "gansu": true, "gs": true, "62": true},
+	{"青海": true, "qinghai": true, "qh": true, "63": true},
+	{"宁夏": true, "ningxia": true, "nx": true, "64": true},
+	{"新疆": true, "xinjiang": true, "xj": true, "65": true},
+	{"香港": true, "hong kong": true, "hongkong": true, "hk": true, "81": true},
+	{"澳门": true, "macao": true, "macau": true, "mo": true, "82": true},
+	{"台湾": true, "taiwan": true, "tw": true, "71": true},
+}
+
+func cleanRegionStr(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.TrimSuffix(s, "省")
+	s = strings.TrimSuffix(s, "市")
+	s = strings.TrimSuffix(s, "自治区")
+	s = strings.TrimSuffix(s, "特别行政区")
+	s = strings.TrimSuffix(s, "回族")
+	s = strings.TrimSuffix(s, "壮族")
+	s = strings.TrimSuffix(s, "维吾尔")
+	return s
+}
+
+func isCompatibleRegion(r1, r2, code1, code2 string) bool {
+	if r1 == "" || r2 == "" {
+		return true
+	}
+	c1 := cleanRegionStr(r1)
+	c2 := cleanRegionStr(r2)
+	if c1 == c2 {
+		return true
+	}
+	idx1 := -1
+	idx2 := -1
+	for i, equiv := range provinceEquiv {
+		if equiv[c1] || (code1 != "" && equiv[strings.ToLower(code1)]) {
+			idx1 = i
+		}
+		if equiv[c2] || (code2 != "" && equiv[strings.ToLower(code2)]) {
+			idx2 = i
+		}
+	}
+	if idx1 != -1 && idx2 != -1 {
+		return idx1 == idx2
+	}
+	if isChinese(c1) && isChinese(c2) && c1 != c2 {
+		return false
+	}
+	return true
+}
+
+func isChinese(s string) bool {
+	for _, r := range s {
+		if r >= 0x4e00 && r <= 0x9fff {
+			return true
+		}
+	}
+	return false
+}
+
 func mergeCityWithPriority(primary City, supplements ...City) City {
-	out := primary
-	for _, c := range supplements {
+	all := append([]City{primary}, supplements...)
+	var best City
+	bestIdx := -1
+	// 1. First try to find the highest-priority candidate that has exact City-level precision (Name != "")
+	for i, c := range all {
+		if c.Name != "" && c.RegionName != "" {
+			best = c
+			bestIdx = i
+			break
+		}
+	}
+	// 2. If no candidate has exact City-level precision, find the highest-priority candidate with Province-level precision (RegionName != "")
+	if bestIdx == -1 {
+		for i, c := range all {
+			if c.RegionName != "" {
+				best = c
+				bestIdx = i
+				break
+			}
+		}
+	}
+	// 3. If still nothing, just use primary
+	if bestIdx == -1 {
+		best = primary
+		bestIdx = 0
+	}
+
+	out := best
+	for i, c := range all {
+		if i == bestIdx {
+			continue
+		}
+		if !isCompatibleRegion(out.RegionName, c.RegionName, out.RegionCode, c.RegionCode) {
+			continue // Prevent stitching fields from a conflicting geographical region!
+		}
 		if out.Name == "" && c.Name != "" {
 			out.Name = c.Name
 		}
@@ -240,7 +360,8 @@ func (h *HybridReader) City(ip net.IP) (City, error) {
 			supplements = append(supplements, maxmindCity)
 		}
 		merged := mergeCityWithPriority(main, supplements...)
-		if h.maxmind != nil {
+		if h.maxmind != nil && (merged.Latitude == 0 && merged.Longitude == 0) &&
+			isCompatibleRegion(merged.RegionName, maxmindCity.RegionName, merged.RegionCode, maxmindCity.RegionCode) {
 			merged.Latitude = maxmindCity.Latitude
 			merged.Longitude = maxmindCity.Longitude
 		}
@@ -271,7 +392,8 @@ func (h *HybridReader) City(ip net.IP) (City, error) {
 		}
 	}
 	merged := mergeCityWithPriority(main, supplements...)
-	if h.maxmind != nil {
+	if h.maxmind != nil && (merged.Latitude == 0 && merged.Longitude == 0) &&
+		isCompatibleRegion(merged.RegionName, maxmindCity.RegionName, merged.RegionCode, maxmindCity.RegionCode) {
 		merged.Latitude = maxmindCity.Latitude
 		merged.Longitude = maxmindCity.Longitude
 	}
@@ -280,52 +402,10 @@ func (h *HybridReader) City(ip net.IP) (City, error) {
 
 // ASN returns merged ASN information from all sources
 func (h *HybridReader) ASN(ip net.IP) (ASN, error) {
-	if h.maxmind == nil && h.geocn == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil {
-		return ASN{}, nil
-	}
-	// Country is determined by MaxMind; branch CN/non-CN for primary
-	var primaryISO string
 	if h.maxmind != nil {
-		if c, err := h.maxmind.Country(ip); err == nil {
-			primaryISO = strings.ToUpper(c.ISO)
-		}
+		return h.maxmind.ASN(ip)
 	}
-	var main ASN
-	var a1, a2, a3, a4 ASN
-	if primaryISO == "CN" {
-		if h.geocn != nil {
-			main, _ = h.geocn.ASN(ip)
-		}
-		if h.czdbV4 != nil && h.isoMatches(h.czdbV4, ip, primaryISO) {
-			a1, _ = h.czdbV4.ASN(ip)
-		}
-		if h.czdbV6 != nil && h.isoMatches(h.czdbV6, ip, primaryISO) {
-			a2, _ = h.czdbV6.ASN(ip)
-		}
-		if h.qqwry != nil && h.isoMatches(h.qqwry, ip, primaryISO) {
-			a3, _ = h.qqwry.ASN(ip)
-		}
-		if h.maxmind != nil && h.isoMatches(h.maxmind, ip, primaryISO) {
-			a4, _ = h.maxmind.ASN(ip)
-		}
-		return mergeASNWithPriority(main, a1, a2, a3, a4), nil
-	}
-	if h.maxmind != nil {
-		main, _ = h.maxmind.ASN(ip)
-	}
-	if h.geocn != nil && h.isoMatches(h.geocn, ip, primaryISO) {
-		a1, _ = h.geocn.ASN(ip)
-	}
-	if h.czdbV4 != nil && h.isoMatches(h.czdbV4, ip, primaryISO) {
-		a2, _ = h.czdbV4.ASN(ip)
-	}
-	if h.czdbV6 != nil && h.isoMatches(h.czdbV6, ip, primaryISO) {
-		a3, _ = h.czdbV6.ASN(ip)
-	}
-	if h.qqwry != nil && h.isoMatches(h.qqwry, ip, primaryISO) {
-		a4, _ = h.qqwry.ASN(ip)
-	}
-	return mergeASNWithPriority(main, a1, a2, a3, a4), nil
+	return ASN{}, nil
 }
 
 // ISP returns merged ISP information from all sources
@@ -397,8 +477,6 @@ func (h *HybridReader) ISP(ip net.IP) (ISP, error) {
 
 // ConnectionType returns connection type, preferring GeoCN.mmdb for China mainland IPs
 func (h *HybridReader) ConnectionType(ip net.IP) (ConnectionType, error) {
-	// 对于中国大陆IP，优先使用GeoCN.mmdb
-	// Use country (MaxMind) to branch CN/non-CN for primary
 	var primaryISO string
 	if h.maxmind != nil {
 		if c, err := h.maxmind.Country(ip); err == nil {
@@ -406,59 +484,23 @@ func (h *HybridReader) ConnectionType(ip net.IP) (ConnectionType, error) {
 		}
 	}
 	if primaryISO == "CN" {
-		// CN: GeoCN primary; then czdbV4 -> czdbV6 -> qqwry -> maxmind
 		if h.geocn != nil {
 			if ct, err := h.geocn.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
 				return ct, nil
 			}
 		}
-		if h.czdbV4 != nil && h.isoMatches(h.czdbV4, ip, primaryISO) {
-			if ct, err := h.czdbV4.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-				return ct, nil
-			}
-		}
-		if h.czdbV6 != nil && h.isoMatches(h.czdbV6, ip, primaryISO) {
-			if ct, err := h.czdbV6.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-				return ct, nil
-			}
-		}
-		if h.qqwry != nil && h.isoMatches(h.qqwry, ip, primaryISO) {
-			if ct, err := h.qqwry.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-				return ct, nil
-			}
-		}
-		if h.maxmind != nil && h.isoMatches(h.maxmind, ip, primaryISO) {
-			if ct, err := h.maxmind.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-				return ct, nil
-			}
+		if h.maxmind != nil {
+			return h.maxmind.ConnectionType(ip)
 		}
 		return ConnectionType{}, nil
 	}
-	// Non-CN: MaxMind primary then geocn -> czdbV4 -> czdbV6 -> qqwry
 	if h.maxmind != nil {
 		if ct, err := h.maxmind.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
 			return ct, nil
 		}
 	}
 	if h.geocn != nil && h.isoMatches(h.geocn, ip, primaryISO) {
-		if ct, err := h.geocn.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-			return ct, nil
-		}
-	}
-	if h.czdbV4 != nil && h.isoMatches(h.czdbV4, ip, primaryISO) {
-		if ct, err := h.czdbV4.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-			return ct, nil
-		}
-	}
-	if h.czdbV6 != nil && h.isoMatches(h.czdbV6, ip, primaryISO) {
-		if ct, err := h.czdbV6.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-			return ct, nil
-		}
-	}
-	if h.qqwry != nil && h.isoMatches(h.qqwry, ip, primaryISO) {
-		if ct, err := h.qqwry.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-			return ct, nil
-		}
+		return h.geocn.ConnectionType(ip)
 	}
 	return ConnectionType{}, nil
 }
@@ -542,9 +584,8 @@ func (h *HybridReader) Network(ip net.IP) (*net.IPNet, error) {
 
 // Proxy returns proxy information using the appropriate reader
 func (h *HybridReader) Proxy(ip net.IP) (Proxy, error) {
-	reader := h.selectReader(ip)
-	if reader != nil {
-		return reader.Proxy(ip)
+	if h.maxmind != nil {
+		return h.maxmind.Proxy(ip)
 	}
 	return Proxy{}, nil
 }
@@ -566,6 +607,9 @@ func (h *HybridReader) isoMatches(r Reader, ip net.IP, primaryISO string) bool {
 		return false
 	}
 	if primaryISO == "" {
+		return true
+	}
+	if primaryISO == "CN" && (r == h.geocn || r == h.czdbV4 || r == h.czdbV6 || r == h.qqwry) {
 		return true
 	}
 	c, err := r.Country(ip)
