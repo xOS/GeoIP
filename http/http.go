@@ -1121,9 +1121,8 @@ func formatCoordinate(c float64) string {
 // validateCountryByCoordinates 根据坐标验证国家代码是否合理
 // 坐标-国家纠错逻辑已移除，避免跨库数据不一致导致误修正
 
-// getChineseCountryName 返回国家的中文名称，如果没有对应的中文名则返回英文名
-func getChineseCountryName(countryCode, englishName string) string {
-	chineseNames := map[string]string{
+var (
+	builtinChineseCountries = map[string]string{
 		"US": "美国",
 		"GB": "英国",
 		"UK": "英国",
@@ -1172,127 +1171,95 @@ func getChineseCountryName(countryCode, englishName string) string {
 		"MO": "澳门",
 	}
 
-	if chineseName, exists := chineseNames[countryCode]; exists {
-		return chineseName
-	}
-	return englishName
-}
-
-// getChineseRegionName 返回地区的中文名称
-func getChineseRegionName(countryCode, regionName string) string {
-	// 美国州名翻译
-	if countryCode == "US" {
-		usStates := map[string]string{
-			"California":     "加利福尼亚州",
-			"New York":       "纽约州",
-			"Texas":          "德克萨斯州",
-			"Florida":        "佛罗里达州",
-			"Illinois":       "伊利诺伊州",
-			"Pennsylvania":   "宾夕法尼亚州",
-			"Ohio":           "俄亥俄州",
-			"Georgia":        "佐治亚州",
-			"North Carolina": "北卡罗来纳州",
-			"Michigan":       "密歇根州",
-			"New Jersey":     "新泽西州",
-			"Virginia":       "弗吉尼亚州",
-			"Washington":     "华盛顿州",
-			"Arizona":        "亚利桑那州",
-			"Massachusetts":  "马萨诸塞州",
-			"Tennessee":      "田纳西州",
-			"Indiana":        "印第安纳州",
-			"Missouri":       "密苏里州",
-			"Maryland":       "马里兰州",
-			"Wisconsin":      "威斯康星州",
-		}
-		if chinese, exists := usStates[regionName]; exists {
-			return chinese
-		}
+	builtinUSStates = map[string]string{
+		"California":     "加利福尼亚州",
+		"New York":       "纽约州",
+		"Texas":          "德克萨斯州",
+		"Florida":        "佛罗里达州",
+		"Illinois":       "伊利诺伊州",
+		"Pennsylvania":   "宾夕法尼亚州",
+		"Ohio":           "俄亥俄州",
+		"Georgia":        "佐治亚州",
+		"North Carolina": "北卡罗来纳州",
+		"Michigan":       "密歇根州",
+		"New Jersey":     "新泽西州",
+		"Virginia":       "弗吉尼亚州",
+		"Washington":     "华盛顿州",
+		"Arizona":        "亚利桑那州",
+		"Massachusetts":  "马萨诸塞州",
+		"Tennessee":      "田纳西州",
+		"Indiana":        "印第安纳州",
+		"Missouri":       "密苏里州",
+		"Maryland":       "马里兰州",
+		"Wisconsin":      "威斯康星州",
 	}
 
-	// 加拿大省份翻译
-	if countryCode == "CA" {
-		caProvinces := map[string]string{
-			"Ontario":                   "安大略省",
-			"Quebec":                    "魁北克省",
-			"British Columbia":          "不列颠哥伦比亚省",
-			"Alberta":                   "阿尔伯塔省",
-			"Manitoba":                  "马尼托巴省",
-			"Saskatchewan":              "萨斯喀彻温省",
-			"Nova Scotia":               "新斯科舍省",
-			"New Brunswick":             "新不伦瑞克省",
-			"Newfoundland and Labrador": "纽芬兰和拉布拉多省",
-			"Prince Edward Island":      "爱德华王子岛省",
-		}
-		if chinese, exists := caProvinces[regionName]; exists {
-			return chinese
-		}
+	builtinCAProvinces = map[string]string{
+		"Ontario":                   "安大略省",
+		"Quebec":                    "魁北克省",
+		"British Columbia":          "不列颠哥伦比亚省",
+		"Alberta":                   "阿尔伯塔省",
+		"Manitoba":                  "马尼托巴省",
+		"Saskatchewan":              "萨斯喀彻温省",
+		"Nova Scotia":               "新斯科舍省",
+		"New Brunswick":             "新不伦瑞克省",
+		"Newfoundland and Labrador": "纽芬兰和拉布拉多省",
+		"Prince Edward Island":      "爱德华王子岛省",
 	}
 
-	return regionName
-}
-
-// getChineseCityName 返回城市的中文名称
-func getChineseCityName(countryCode, cityName string) string {
-	// 美国主要城市翻译
-	if countryCode == "US" {
-		usCities := map[string]string{
-			"New York":         "纽约",
-			"Los Angeles":      "洛杉矶",
-			"Chicago":          "芝加哥",
-			"Houston":          "休斯顿",
-			"Phoenix":          "凤凰城",
-			"Philadelphia":     "费城",
-			"San Antonio":      "圣安东尼奥",
-			"San Diego":        "圣地亚哥",
-			"Dallas":           "达拉斯",
-			"San Jose":         "圣何塞",
-			"Austin":           "奥斯汀",
-			"Jacksonville":     "杰克逊维尔",
-			"San Francisco":    "旧金山",
-			"Columbus":         "哥伦布",
-			"Charlotte":        "夏洛特",
-			"Fort Worth":       "沃思堡",
-			"Indianapolis":     "印第安纳波利斯",
-			"Seattle":          "西雅图",
-			"Denver":           "丹佛",
-			"Boston":           "波士顿",
-			"El Paso":          "埃尔帕索",
-			"Detroit":          "底特律",
-			"Nashville":        "纳什维尔",
-			"Portland":         "波特兰",
-			"Memphis":          "孟菲斯",
-			"Oklahoma City":    "俄克拉荷马城",
-			"Las Vegas":        "拉斯维加斯",
-			"Louisville":       "路易斯维尔",
-			"Baltimore":        "巴尔的摩",
-			"Milwaukee":        "密尔沃基",
-			"Albuquerque":      "阿尔伯克基",
-			"Tucson":           "图森",
-			"Fresno":           "弗雷斯诺",
-			"Mesa":             "梅萨",
-			"Sacramento":       "萨克拉门托",
-			"Atlanta":          "亚特兰大",
-			"Kansas City":      "堪萨斯城",
-			"Colorado Springs": "科罗拉多斯普林斯",
-			"Miami":            "迈阿密",
-			"Raleigh":          "罗利",
-			"Omaha":            "奥马哈",
-			"Long Beach":       "长滩",
-			"Virginia Beach":   "弗吉尼亚海滩",
-			"Oakland":          "奥克兰",
-			"Minneapolis":      "明尼阿波利斯",
-			"Tampa":            "坦帕",
-			"Tulsa":            "塔尔萨",
-			"Arlington":        "阿灵顿",
-			"New Orleans":      "新奥尔良",
-		}
-		if chinese, exists := usCities[cityName]; exists {
-			return chinese
-		}
+	builtinUSCities = map[string]string{
+		"New York":         "纽约",
+		"Los Angeles":      "洛杉矶",
+		"Chicago":          "芝加哥",
+		"Houston":          "休斯顿",
+		"Phoenix":          "凤凰城",
+		"Philadelphia":     "费城",
+		"San Antonio":      "圣安东尼奥",
+		"San Diego":        "圣地亚哥",
+		"Dallas":           "达拉斯",
+		"San Jose":         "圣何塞",
+		"Austin":           "奥斯汀",
+		"Jacksonville":     "杰克逊维尔",
+		"San Francisco":    "旧金山",
+		"Columbus":         "哥伦布",
+		"Charlotte":        "夏洛特",
+		"Fort Worth":       "沃思堡",
+		"Indianapolis":     "印第安纳波利斯",
+		"Seattle":          "西雅图",
+		"Denver":           "丹佛",
+		"Boston":           "波士顿",
+		"El Paso":          "埃尔帕索",
+		"Detroit":          "底特律",
+		"Nashville":        "纳什维尔",
+		"Portland":         "波特兰",
+		"Memphis":          "孟菲斯",
+		"Oklahoma City":    "俄克拉荷马城",
+		"Las Vegas":        "拉斯维加斯",
+		"Louisville":       "路易斯维尔",
+		"Baltimore":        "巴尔的摩",
+		"Milwaukee":        "密尔沃基",
+		"Albuquerque":      "阿尔伯克基",
+		"Tucson":           "图森",
+		"Fresno":           "弗雷斯诺",
+		"Mesa":             "梅萨",
+		"Sacramento":       "萨克拉门托",
+		"Atlanta":          "亚特兰大",
+		"Kansas City":      "堪萨斯城",
+		"Colorado Springs": "科罗拉多斯普林斯",
+		"Miami":            "迈阿密",
+		"Raleigh":          "罗利",
+		"Omaha":            "奥马哈",
+		"Long Beach":       "长滩",
+		"Virginia Beach":   "弗吉尼亚海滩",
+		"Oakland":          "奥克兰",
+		"Minneapolis":      "明尼阿波利斯",
+		"Tampa":            "坦帕",
+		"Tulsa":            "塔尔萨",
+		"Arlington":        "阿灵顿",
+		"New Orleans":      "新奥尔良",
 	}
 
-	// 其他国家主要城市翻译
-	globalCities := map[string]string{
+	builtinGlobalCities = map[string]string{
 		"London":           "伦敦",
 		"Paris":            "巴黎",
 		"Tokyo":            "东京",
@@ -1340,10 +1307,40 @@ func getChineseCityName(countryCode, cityName string) string {
 		"Jakarta":          "雅加达",
 		"Manila":           "马尼拉",
 	}
-	if chinese, exists := globalCities[cityName]; exists {
+)
+
+// getChineseCountryName 返回国家的中文名称，如果没有对应的中文名则返回英文名
+func getChineseCountryName(countryCode, englishName string) string {
+	if chineseName, exists := builtinChineseCountries[countryCode]; exists {
+		return chineseName
+	}
+	return englishName
+}
+
+// getChineseRegionName 返回地区的中文名称
+func getChineseRegionName(countryCode, regionName string) string {
+	if countryCode == "US" {
+		if chinese, exists := builtinUSStates[regionName]; exists {
+			return chinese
+		}
+	} else if countryCode == "CA" {
+		if chinese, exists := builtinCAProvinces[regionName]; exists {
+			return chinese
+		}
+	}
+	return regionName
+}
+
+// getChineseCityName 返回城市的中文名称
+func getChineseCityName(countryCode, cityName string) string {
+	if countryCode == "US" {
+		if chinese, exists := builtinUSCities[cityName]; exists {
+			return chinese
+		}
+	}
+	if chinese, exists := builtinGlobalCities[cityName]; exists {
 		return chinese
 	}
-
 	return cityName
 }
 

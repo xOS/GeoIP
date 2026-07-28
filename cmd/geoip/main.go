@@ -73,7 +73,7 @@ func main() {
 	// Load configuration
 	config, err := LoadConfig(*configFile)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("[ERROR] 加载配置文件失败 / Failed to load config: %v", err)
 	}
 
 	// Override config with command line flags if provided
@@ -83,52 +83,54 @@ func main() {
 
 	// Validate configuration
 	if err := config.Validate(); err != nil {
-		log.Fatal(err)
+		log.Fatalf("[ERROR] 配置参数验证失败 / Config validation failed: %v", err)
 	}
 
 	// Initialize translation system
 	if err := http.InitTranslations(config.TranslationFile); err != nil {
-		log.Printf("Warning: Failed to initialize translations: %v", err)
+		log.Printf("[WARNING] 初始化翻译文件失败，将使用内置翻译 / Failed to initialize translations (using builtin): %v", err)
 	}
 
 	var r geo.Reader
 
 	if config.HybridMode && config.Databases.QQWry != "" {
 		// Use hybrid mode: czdb v4/v6 for China mainland, fallback to qqwry, MaxMind for others
-				r, err = geo.OpenWithHybridMode(
-					config.Databases.Country,
-					config.Databases.City,
-					config.Databases.ASN,
-					config.Databases.ISP,
-					config.Databases.ConnectionType,
-					config.Databases.IP2Proxy,
-					config.Databases.QQWry,
-					config.Databases.GeoCN,
-					config.Databases.CZ88v4,
-					config.Databases.CZDBKey,
-					config.Databases.CZ88v6,
-				)
+		log.Printf("[INFO] 启动混合查询模式(Hybrid Mode): 中国大陆 IP 优先使用 CZDB/QQWry/GeoCN，海外 IP 优先使用 MaxMind")
+		r, err = geo.OpenWithHybridMode(
+			config.Databases.Country,
+			config.Databases.City,
+			config.Databases.ASN,
+			config.Databases.ISP,
+			config.Databases.ConnectionType,
+			config.Databases.IP2Proxy,
+			config.Databases.QQWry,
+			config.Databases.GeoCN,
+			config.Databases.CZ88v4,
+			config.Databases.CZDBKey,
+			config.Databases.CZ88v6,
+		)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("[ERROR] 启动混合查询模式失败，请检查各数据库路径及解密密钥 / Failed to initialize hybrid mode: %v", err)
 		}
-		log.Println("Using hybrid mode: czdb v4/v6 for China mainland, fallback to qqwry, MaxMind for others")
+		log.Println("[INFO] 混合查询模式成功初始化 / Hybrid mode initialized successfully")
 	} else if config.AutoDetect {
 		// Auto-detect database formats
-				databases := []struct {
-					path string
-					key  string
-				}{
-					{config.Databases.Country, ""},
-					{config.Databases.City, ""},
-					{config.Databases.ASN, ""},
-					{config.Databases.ISP, ""},
-					{config.Databases.ConnectionType, ""},
-					{config.Databases.IP2Proxy, ""},
-					{config.Databases.QQWry, ""},
-					{config.Databases.GeoCN, ""},
-					{config.Databases.CZ88v4, config.Databases.CZ88v4Key},
-					{config.Databases.CZ88v6, config.Databases.CZ88v6Key},
-				}
+		log.Printf("[INFO] 启动自动检测模式(AutoDetect Mode): 正在检测并加载各类数据库")
+		databases := []struct {
+			path string
+			key  string
+		}{
+			{config.Databases.Country, ""},
+			{config.Databases.City, ""},
+			{config.Databases.ASN, ""},
+			{config.Databases.ISP, ""},
+			{config.Databases.ConnectionType, ""},
+			{config.Databases.IP2Proxy, ""},
+			{config.Databases.QQWry, ""},
+			{config.Databases.GeoCN, ""},
+			{config.Databases.CZ88v4, config.Databases.CZ88v4Key},
+			{config.Databases.CZ88v6, config.Databases.CZ88v6Key},
+		}
 		var readers []geo.Reader
 		for _, db := range databases {
 			if db.path == "" {
@@ -142,22 +144,23 @@ func main() {
 				reader, err = geo.CreateReader(db.path)
 			}
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("[ERROR] 自动检测模式: 读取数据库 %q 失败，请检查文件格式或解密密钥 / Failed to load db %q: %v", db.path, db.path, err)
 			}
 			if !reader.IsEmpty() {
 				readers = append(readers, reader)
 			}
 		}
 		if len(readers) == 0 {
-			log.Fatal("No valid database loaded")
+			log.Fatal("[ERROR] 自动检测模式: 未能加载任何有效的数据库文件 / No valid database loaded")
 		}
 		r = readers[0]
 		if len(readers) > 1 {
 			r = geo.NewCombinedReader(readers[0], readers[1])
 		}
-		log.Println("Using auto-detection for database formats")
+		log.Printf("[INFO] 自动检测模式成功初始化了 %d 个数据库读取器 / Initialized %d database readers in Auto mode", len(readers), len(readers))
 	} else {
 		// Use traditional method
+		log.Printf("[INFO] 启动标准查询模式(Standard Mode): 加载 MaxMind/IP2Location 数据库")
 		r, err = geo.OpenWithProxy(
 			config.Databases.Country,
 			config.Databases.City,
@@ -167,7 +170,7 @@ func main() {
 			config.Databases.IP2Proxy,
 		)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("[ERROR] 标准查询模式读取数据库失败 / Failed to open standard mode database: %v", err)
 		}
 	}
 

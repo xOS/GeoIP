@@ -2,6 +2,7 @@ package geo
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net"
 
@@ -116,8 +117,10 @@ func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string,
 			// Handle MaxMind MMDB
 			r, err := maxminddb.Open(*dbPath)
 			if err != nil {
+				log.Printf("[ERROR] [GeoIP] MaxMind 数据库读取失败 / Failed to open MaxMind MMDB: path=%q err=%v", *dbPath, err)
 				return nil, fmt.Errorf("failed to open MaxMind database %s: %v", *dbPath, err)
 			}
+			log.Printf("[INFO] [GeoIP] 成功加载 MaxMind 数据库 (%s) / Successfully loaded MaxMind MMDB: path=%q", dbType, *dbPath)
 			switch dbType {
 			case "country":
 				country = r
@@ -266,16 +269,24 @@ func OpenWithHybridMode(countryDB, cityDB string, asnDB string, ispDB string, co
 			qqwryReader = reader.(Reader)
 		}
 	}
-	if czdbV4 != "" && czdbKey != "" {
-		reader, err := openDatabaseWithDebug(czdbV4, func(p string) (interface{}, error) { return CreateReader(p, czdbKey) }, "CZDB v4 DB")
-		if err == nil {
-			czdbV4Reader = reader.(Reader)
+	if czdbV4 != "" {
+		if czdbKey == "" {
+			log.Printf("[ERROR] [GeoIP] 混合模式(Hybrid): 启用了 CZDB v4 (%q) 但未配置解密密钥(czdb_key为空)，无法加载 / CZDB v4 configured without czdb_key!", czdbV4)
+		} else {
+			reader, err := openDatabaseWithDebug(czdbV4, func(p string) (interface{}, error) { return CreateReader(p, czdbKey) }, "CZDB v4 DB")
+			if err == nil {
+				czdbV4Reader = reader.(Reader)
+			}
 		}
 	}
-	if czdbV6 != "" && czdbKey != "" {
-		reader, err := openDatabaseWithDebug(czdbV6, func(p string) (interface{}, error) { return CreateReader(p, czdbKey) }, "CZDB v6 DB")
-		if err == nil {
-			czdbV6Reader = reader.(Reader)
+	if czdbV6 != "" {
+		if czdbKey == "" {
+			log.Printf("[ERROR] [GeoIP] 混合模式(Hybrid): 启用了 CZDB v6 (%q) 但未配置解密密钥(czdb_key为空)，无法加载 / CZDB v6 configured without czdb_key!", czdbV6)
+		} else {
+			reader, err := openDatabaseWithDebug(czdbV6, func(p string) (interface{}, error) { return CreateReader(p, czdbKey) }, "CZDB v6 DB")
+			if err == nil {
+				czdbV6Reader = reader.(Reader)
+			}
 		}
 	}
 	if geocnMMDB != "" {

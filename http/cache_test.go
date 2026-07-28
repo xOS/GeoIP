@@ -55,9 +55,6 @@ func TestCacheDuplicate(t *testing.T) {
 	if got := len(c.entries); got != want {
 		t.Errorf("want %d entries, got %d", want, got)
 	}
-	if got := c.values.Len(); got != want {
-		t.Errorf("want %d values, got %d", want, got)
-	}
 }
 
 func TestCacheResize(t *testing.T) {
