@@ -1,46 +1,35 @@
 package geo
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
+	"os"
+	"strconv"
 
 	"github.com/oschwald/maxminddb-golang"
 )
 
 // GeoCNMMDBReader implements the Reader interface for GeoCN.mmdb database
 type GeoCNMMDBReader struct {
-	reader *maxminddb.Reader
+	reader      *maxminddb.Reader
+	divisionMap map[string][]string
 }
 
 // GeoCNRecord represents the structure of records in GeoCN.mmdb
 type GeoCNRecord struct {
-	Country struct {
-		ISOCode string            `maxminddb:"iso_code"`
-		Names   map[string]string `maxminddb:"names"`
-	} `maxminddb:"country"`
-	Province    interface{} `maxminddb:"province"`
-	Subdivision interface{} `maxminddb:"subdivision"`
-	City        interface{} `maxminddb:"city"`
-	Districts   interface{} `maxminddb:"districts"`
-	District    interface{} `maxminddb:"district"`
-	County      interface{} `maxminddb:"county"`
-	Area        interface{} `maxminddb:"area"`
-	ISP         interface{} `maxminddb:"isp"`
-	Net         interface{} `maxminddb:"net"`
-	GeoCN       struct {
-		Division struct {
-			Full  []string `maxminddb:"full"`
-			Short []string `maxminddb:"short"`
-		} `maxminddb:"division"`
-		DivisionCode interface{} `maxminddb:"division_code"`
-		ISP          interface{} `maxminddb:"isp"`
-	} `maxminddb:"geo_cn"`
-	Location struct {
-		Latitude  float64 `maxminddb:"latitude"`
-		Longitude float64 `maxminddb:"longitude"`
-		TimeZone  string  `maxminddb:"time_zone"`
-	} `maxminddb:"location"`
-	Network string `maxminddb:"network"`
+	// Standard MaxMind fields (kept for backward compatibility with standard GeoCN DBs)
+	Province  interface{} `maxminddb:"province"`
+	City      interface{} `maxminddb:"city"`
+	Districts interface{} `maxminddb:"districts"`
+	District  interface{} `maxminddb:"district"`
+	County    interface{} `maxminddb:"county"`
+	Network   string      `maxminddb:"network"`
+
+	// ljxi/GeoCN specific fields
+	DivisionCode interface{} `maxminddb:"division_code"`
+	ISP          interface{} `maxminddb:"isp"`
+	Type         interface{} `maxminddb:"type"`
 }
 
 // extractGeoString robustly extracts a string from an interface{} which might be a string or a slice
@@ -65,6 +54,32 @@ func extractGeoString(val interface{}) string {
 	return ""
 }
 
+// extractGeoCode extracts an integer division code as string from interface{}
+func extractGeoCode(val interface{}) string {
+	if val == nil {
+		return ""
+	}
+	switch v := val.(type) {
+	case string:
+		return v
+	case int:
+		return strconv.Itoa(v)
+	case int32:
+		return strconv.FormatInt(int64(v), 10)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case uint:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint64:
+		return strconv.FormatUint(v, 10)
+	case float64:
+		return strconv.FormatFloat(v, 'f', 0, 64)
+	}
+	return ""
+}
+
 // NewGeoCNMMDBReader creates a new GeoCN MMDB reader
 func NewGeoCNMMDBReader(path string) (*GeoCNMMDBReader, error) {
 	reader, err := maxminddb.Open(path)
@@ -72,39 +87,22 @@ func NewGeoCNMMDBReader(path string) (*GeoCNMMDBReader, error) {
 		return nil, err
 	}
 
+	divMap := make(map[string][]string)
+	divPath := "division_codes.json"
+	if b, err := os.ReadFile(divPath); err == nil {
+		_ = json.Unmarshal(b, &divMap)
+	}
+
 	return &GeoCNMMDBReader{
-		reader: reader,
+		reader:      reader,
+		divisionMap: divMap,
 	}, nil
 }
 
 // Country returns country information for the given IP
 func (g *GeoCNMMDBReader) Country(ip net.IP) (Country, error) {
-	// Check if reader is nil
-	if g.reader == nil {
-		return Country{}, fmt.Errorf("reader is nil")
-	}
-
-	var record GeoCNRecord
-	err := g.reader.Lookup(ip, &record)
-	if err != nil {
-		return Country{}, err
-	}
-
-	country := Country{}
-	if record.Country.ISOCode != "" {
-		country.ISO = record.Country.ISOCode
-	}
-
-	// Try to get country name in Chinese first, then English
-	if len(record.Country.Names) > 0 {
-		if name, exists := record.Country.Names["zh-CN"]; exists {
-			country.Name = name
-		} else if name, exists := record.Country.Names["en"]; exists {
-			country.Name = name
-		}
-	}
-
-	return country, nil
+	// GeoCN is a China-specific database, typically doesn't contain country ISO codes
+	return Country{}, nil
 }
 
 // City returns city information for the given IP
@@ -122,21 +120,10 @@ func (g *GeoCNMMDBReader) City(ip net.IP) (City, error) {
 
 	city := City{}
 	city.Name = extractGeoString(record.City)
-	if city.Name == "" && len(record.GeoCN.Division.Full) >= 2 {
-		city.Name = record.GeoCN.Division.Full[1]
-	}
-
-	// province
+	
 	prov := extractGeoString(record.Province)
-	if prov == "" {
-		prov = extractGeoString(record.Subdivision)
-	}
-	if prov == "" && len(record.GeoCN.Division.Full) >= 1 {
-		prov = record.GeoCN.Division.Full[0]
-	}
 	city.RegionName = prov
 
-	// district
 	dist := extractGeoString(record.Districts)
 	if dist == "" {
 		dist = extractGeoString(record.District)
@@ -144,23 +131,18 @@ func (g *GeoCNMMDBReader) City(ip net.IP) (City, error) {
 	if dist == "" {
 		dist = extractGeoString(record.County)
 	}
-	if dist == "" {
-		dist = extractGeoString(record.Area)
-	}
-	if dist == "" && len(record.GeoCN.Division.Full) >= 3 {
-		dist = record.GeoCN.Division.Full[2]
-	}
 	city.District = dist
 
-	// Set coordinates if available
-	if record.Location.Latitude != 0 || record.Location.Longitude != 0 {
-		city.Latitude = record.Location.Latitude
-		city.Longitude = record.Location.Longitude
-	}
-
-	// Set timezone if available
-	if record.Location.TimeZone != "" {
-		city.Timezone = record.Location.TimeZone
+	// GB2260 division code translation fallback (primary for modern GeoCN)
+	if city.RegionName == "" && city.Name == "" && city.District == "" && g.divisionMap != nil {
+		divCode := extractGeoCode(record.DivisionCode)
+		if divCode != "" {
+			if names, ok := g.divisionMap[divCode]; ok && len(names) >= 3 {
+				city.RegionName = names[0]
+				city.Name = names[1]
+				city.District = names[2]
+			}
+		}
 	}
 
 	return city, nil
@@ -188,9 +170,6 @@ func (g *GeoCNMMDBReader) ISP(ip net.IP) (ISP, error) {
 
 	isp := ISP{}
 	ispStr := extractGeoString(record.ISP)
-	if ispStr == "" {
-		ispStr = extractGeoString(record.GeoCN.ISP)
-	}
 	isp.ISP = ispStr
 
 	// If we have ISP info, also set the organization
@@ -215,21 +194,13 @@ func (g *GeoCNMMDBReader) ConnectionType(ip net.IP) (ConnectionType, error) {
 	}
 
 	connType := ConnectionType{}
-	// 根据要求，net对应ConnectionType
-	connType.ConnectionType = extractGeoString(record.Net)
+	connType.ConnectionType = extractGeoString(record.Type)
 
 	return connType, nil
 }
 
 // Proxy returns proxy information for the given IP
 func (g *GeoCNMMDBReader) Proxy(ip net.IP) (Proxy, error) {
-	// GeoCN.mmdb doesn't typically contain proxy information
-	// Check if reader is nil
-	if g.reader == nil {
-		return Proxy{IsProxy: false}, nil
-	}
-
-	// Even if reader is not nil, GeoCN.mmdb doesn't typically contain proxy information
 	return Proxy{IsProxy: false}, nil
 }
 
@@ -240,17 +211,21 @@ func (g *GeoCNMMDBReader) Network(ip net.IP) (*net.IPNet, error) {
 		return nil, nil
 	}
 	var record GeoCNRecord
-	if err := g.reader.Lookup(ip, &record); err != nil {
+	network, _, err := g.reader.LookupNetwork(ip, &record)
+	if err != nil {
 		return nil, err
 	}
-	if record.Network == "" {
-		return nil, nil
+	if network != nil {
+		return network, nil
 	}
-	_, n, err := net.ParseCIDR(record.Network)
-	if err != nil {
-		return nil, nil
+	// Fallback to explicit Network string if defined in standard DBs
+	if record.Network != "" {
+		_, n, err := net.ParseCIDR(record.Network)
+		if err == nil {
+			return n, nil
+		}
 	}
-	return n, nil
+	return nil, nil
 }
 
 // IsEmpty returns true if the reader is empty
