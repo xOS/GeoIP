@@ -26,7 +26,8 @@ type Config struct {
 	EnableProfiling bool `json:"enable_profiling,omitempty"`
 
 	// Translation settings
-	TranslationFile string `json:"translation_file,omitempty"`
+	TranslationFile   string `json:"translation_file,omitempty"`
+	DivisionCodesFile string `json:"division_codes_file,omitempty"`
 
 	// Database paths
 	Databases DatabaseConfig `json:"databases"`
@@ -291,9 +292,10 @@ func (c *Config) resolveDatabasePaths(configDir string) {
 	c.Databases.CZ88v4 = resolvePath(configDir, c.Databases.CZ88v4)
 	c.Databases.CZ88v6 = resolvePath(configDir, c.Databases.CZ88v6)
 
-	// Also resolve template directory and translation file
+	// Also resolve template directory and translation files
 	c.TemplateDir = resolvePath(configDir, c.TemplateDir)
 	c.TranslationFile = resolvePath(configDir, c.TranslationFile)
+	c.DivisionCodesFile = resolvePath(configDir, c.DivisionCodesFile)
 }
 
 // validateDatabasePaths validates all database paths

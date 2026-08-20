@@ -15,9 +15,9 @@ RUN apk --no-cache --no-progress add \
 WORKDIR /geoip
 COPY ./data ./data
 COPY ./html ./html
-COPY ./division_codes.json ./division_codes.json
+COPY ./config ./config
 COPY --from=binarybuilder /geoip/cmd/geoip/app ./app
 
-VOLUME ["/geoip/data"]
+VOLUME ["/geoip/data", "/geoip/config"]
 EXPOSE 8008 1212
-CMD ["/geoip/app -a data/GeoLite2-ASN.mmdb -i data/GeoIP2-ISP.mmdb -c data/GeoLite2-City.mmdb -f data/GeoLite2-Country.mmdb -n data/GeoIP2-Connection-Type.mmdb -H x-forwarded-for -r -s -p"]
+CMD ["/geoip/app", "-config", "config/complete-hybrid.json"]

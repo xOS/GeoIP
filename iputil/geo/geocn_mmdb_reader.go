@@ -10,6 +10,9 @@ import (
 	"github.com/oschwald/maxminddb-golang"
 )
 
+// GeoCNDivisionCodesFile is the path to the gb2260 division codes mapping file
+var GeoCNDivisionCodesFile string = "division_codes.json"
+
 // GeoCNMMDBReader implements the Reader interface for GeoCN.mmdb database
 type GeoCNMMDBReader struct {
 	reader      *maxminddb.Reader
@@ -88,9 +91,10 @@ func NewGeoCNMMDBReader(path string) (*GeoCNMMDBReader, error) {
 	}
 
 	divMap := make(map[string][]string)
-	divPath := "division_codes.json"
-	if b, err := os.ReadFile(divPath); err == nil {
-		_ = json.Unmarshal(b, &divMap)
+	if GeoCNDivisionCodesFile != "" {
+		if b, err := os.ReadFile(GeoCNDivisionCodesFile); err == nil {
+			_ = json.Unmarshal(b, &divMap)
+		}
 	}
 
 	return &GeoCNMMDBReader{

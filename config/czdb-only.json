@@ -1,0 +1,14 @@
+{
+  "listen_address": ":1213",
+  "template_dir": "../html",
+  "cache_size": 1000,
+  "trusted_headers": ["X-Real-IP", "X-Forwarded-For"],
+  "enable_reverse_lookup": true,
+  "enable_port_lookup": true,
+  "enable_profiling": false,
+  "hybrid_mode": false,
+  "auto_detect": false,
+  "databases": {
+    "qqwry": "../data/qqwry.dat"
+  }
+}

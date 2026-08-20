@@ -91,6 +91,10 @@ func main() {
 		log.Printf("[WARNING] 初始化翻译文件失败，将使用内置翻译 / Failed to initialize translations (using builtin): %v", err)
 	}
 
+	if config.DivisionCodesFile != "" {
+		geo.GeoCNDivisionCodesFile = config.DivisionCodesFile
+	}
+
 	var r geo.Reader
 
 	if config.HybridMode && config.Databases.QQWry != "" {
