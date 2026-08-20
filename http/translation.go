@@ -2,7 +2,7 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"os"
 	"sync"
 )
@@ -40,7 +40,7 @@ func (tm *TranslationManager) LoadFromFile(filename string) error {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		// 文件读取失败，回退到内置翻译
-		fmt.Printf("Warning: Failed to read translation file %s: %v, using builtin translations\n", filename, err)
+		log.Printf("[WARNING] 无法读取翻译文件 / Failed to read translation file: path=%q err=%v (using builtin translations)", filename, err)
 		tm.loadBuiltinTranslations()
 		return nil
 	}
@@ -48,7 +48,7 @@ func (tm *TranslationManager) LoadFromFile(filename string) error {
 	var translationFile TranslationFile
 	if err := json.Unmarshal(data, &translationFile); err != nil {
 		// 文件解析失败，回退到内置翻译
-		fmt.Printf("Warning: Failed to parse translation file %s: %v, using builtin translations\n", filename, err)
+		log.Printf("[WARNING] 翻译文件解析失败 / Failed to parse translation file: path=%q err=%v (using builtin translations)", filename, err)
 		tm.loadBuiltinTranslations()
 		return nil
 	}
@@ -80,7 +80,7 @@ func (tm *TranslationManager) LoadFromFile(filename string) error {
 	}
 
 	tm.enabled = true
-	fmt.Printf("Loaded translations from file: %s\n", filename)
+	log.Printf("[INFO] [GeoIP] 成功加载翻译文件 / Successfully loaded translation file: path=%q", filename)
 	return nil
 }
 
@@ -93,7 +93,7 @@ func (tm *TranslationManager) loadBuiltinTranslations() {
 	tm.enabled = true // 内置翻译也算启用
 
 	// 这里不加载任何翻译，保持现有的硬编码翻译逻辑
-	fmt.Println("Using builtin translation logic")
+	log.Println("[INFO] [GeoIP] 使用内置默认翻译逻辑 / Using builtin translation logic")
 }
 
 // GetCountryName 获取国家名翻译

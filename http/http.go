@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"net/http/pprof"
 
@@ -1110,8 +1111,38 @@ func (s *Server) Handler() http.Handler {
 	return r.Handler()
 }
 
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
+}
+
 func (s *Server) ListenAndServe(addr string) error {
-	return http.ListenAndServe(addr, s.Handler())
+	handler := s.Handler()
+	logger := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		lrw := &loggingResponseWriter{w, http.StatusOK}
+		
+		// Get real IP if proxy headers are trusted
+		clientIP := r.RemoteAddr
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			clientIP = strings.Split(xff, ",")[0]
+		} else if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+			clientIP = realIP
+		}
+
+		handler.ServeHTTP(lrw, r)
+		
+		// Only log API and page requests, skip favicon to reduce noise
+		if r.URL.Path != "/favicon.ico" {
+			log.Printf("[ACCESS] %s | %s %s | %d | %v", clientIP, r.Method, r.URL.Path, lrw.statusCode, time.Since(start))
+		}
+	})
+	return http.ListenAndServe(addr, logger)
 }
 
 func formatCoordinate(c float64) string {
