@@ -3,6 +3,7 @@ package geo
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strconv"
@@ -93,7 +94,13 @@ func NewGeoCNMMDBReader(path string) (*GeoCNMMDBReader, error) {
 	divMap := make(map[string][]string)
 	if GeoCNDivisionCodesFile != "" {
 		if b, err := os.ReadFile(GeoCNDivisionCodesFile); err == nil {
-			_ = json.Unmarshal(b, &divMap)
+			if err := json.Unmarshal(b, &divMap); err == nil {
+				log.Printf("[INFO] [GeoIP] 成功加载行政区划代码映射表 / Successfully loaded division codes map: path=%q (records: %d)", GeoCNDivisionCodesFile, len(divMap))
+			} else {
+				log.Printf("[WARNING] [GeoIP] 行政区划代码映射表解析失败 / Failed to parse division codes map: path=%q err=%v", GeoCNDivisionCodesFile, err)
+			}
+		} else {
+			log.Printf("[WARNING] [GeoIP] 无法读取行政区划代码映射表 / Failed to read division codes map: path=%q err=%v", GeoCNDivisionCodesFile, err)
 		}
 	}
 

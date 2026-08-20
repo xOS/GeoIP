@@ -95,6 +95,10 @@ func main() {
 		geo.GeoCNDivisionCodesFile = config.DivisionCodesFile
 	}
 
+	if config.TemplateDir != "" {
+		log.Printf("[INFO] 成功配置前端页面模板目录 / Successfully configured template directory: path=%q", config.TemplateDir)
+	}
+
 	var r geo.Reader
 
 	if config.HybridMode && config.Databases.QQWry != "" {
