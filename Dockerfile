@@ -15,6 +15,7 @@ RUN apk --no-cache --no-progress add \
 WORKDIR /geoip
 COPY ./data ./data
 COPY ./html ./html
+COPY ./division_codes.json ./division_codes.json
 COPY --from=binarybuilder /geoip/cmd/geoip/app ./app
 
 VOLUME ["/geoip/data"]
