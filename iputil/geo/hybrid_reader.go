@@ -10,28 +10,34 @@ import (
 // czdbV4: 纯真 czdb v4，czdbV6: 纯真 czdb v6
 // qqwry: 旧版纯真，maxmind: MaxMind
 type HybridReader struct {
-	maxmind Reader
-	geocn   Reader
-	czdbV4  Reader
-	czdbV6  Reader
-	qqwry   Reader
+	maxmind     Reader
+	geocn       Reader
+	czdbV4      Reader
+	czdbV6      Reader
+	qqwry       Reader
+	ip2location    Reader
+	ip2locationASN Reader
 }
 
 // Getter methods for http layer lang override
-func (h *HybridReader) GetMaxmind() Reader { return h.maxmind }
-func (h *HybridReader) GetGeoCN() Reader   { return h.geocn }
-func (h *HybridReader) GetCzdbV4() Reader  { return h.czdbV4 }
-func (h *HybridReader) GetCzdbV6() Reader  { return h.czdbV6 }
-func (h *HybridReader) GetQQWry() Reader   { return h.qqwry }
+func (h *HybridReader) GetMaxmind() Reader     { return h.maxmind }
+func (h *HybridReader) GetGeoCN() Reader       { return h.geocn }
+func (h *HybridReader) GetCzdbV4() Reader      { return h.czdbV4 }
+func (h *HybridReader) GetCzdbV6() Reader      { return h.czdbV6 }
+func (h *HybridReader) GetQQWry() Reader       { return h.qqwry }
+func (h *HybridReader) GetIP2Location() Reader { return h.ip2location }
+func (h *HybridReader) GetIP2LocationASN() Reader { return h.ip2locationASN }
 
 // NewHybridReader creates a new hybrid reader supporting czdb v4/v6
-func NewHybridReader(maxmindReader, geocnReader, czdbV4Reader, czdbV6Reader, qqwryReader Reader) Reader {
+func NewHybridReader(maxmindReader, geocnReader, czdbV4Reader, czdbV6Reader, qqwryReader, ip2locationReader, ip2locationASNReader Reader) Reader {
 	return &HybridReader{
-		maxmind: maxmindReader,
-		geocn:   geocnReader,
-		czdbV4:  czdbV4Reader,
-		czdbV6:  czdbV6Reader,
-		qqwry:   qqwryReader,
+		maxmind:     maxmindReader,
+		geocn:       geocnReader,
+		czdbV4:      czdbV4Reader,
+		czdbV6:      czdbV6Reader,
+		qqwry:       qqwryReader,
+		ip2location:    ip2locationReader,
+		ip2locationASN: ip2locationASNReader,
 	}
 }
 
@@ -220,6 +226,10 @@ func mergeCityWithPriority(primary City, supplements ...City) City {
 		if out.MetroCode == 0 && c.MetroCode != 0 {
 			out.MetroCode = c.MetroCode
 		}
+		if out.Latitude == 0 && out.Longitude == 0 && (c.Latitude != 0 || c.Longitude != 0) {
+			out.Latitude = c.Latitude
+			out.Longitude = c.Longitude
+		}
 	}
 	return out
 }
@@ -258,57 +268,38 @@ func mergeASNWithPriority(primary ASN, supplements ...ASN) ASN {
 
 // Country returns merged country information from all sources
 func (h *HybridReader) Country(ip net.IP) (Country, error) {
-	if h.maxmind == nil && h.geocn == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil {
+	if h.maxmind == nil && h.geocn == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil && h.ip2location == nil {
 		return Country{}, nil
 	}
-	// Primary always MaxMind
 	var primary Country
-	if h.maxmind != nil {
+	var supplements []Country
+	if h.ip2location != nil {
+		primary, _ = h.ip2location.Country(ip)
+		if h.maxmind != nil {
+			if c, err := h.maxmind.Country(ip); err == nil {
+				supplements = append(supplements, c)
+			}
+		}
+	} else if h.maxmind != nil {
 		primary, _ = h.maxmind.Country(ip)
 	}
-	// If no MaxMind, fallback to others in order
-	if primary.ISO == "" && primary.Name == "" {
-		if h.geocn != nil {
-			if c, err := h.geocn.Country(ip); err == nil {
-				primary = c
-			}
-		}
-		if primary.ISO == "" && primary.Name == "" && h.czdbV4 != nil {
-			if c, err := h.czdbV4.Country(ip); err == nil {
-				primary = c
-			}
-		}
-		if primary.ISO == "" && primary.Name == "" && h.czdbV6 != nil {
-			if c, err := h.czdbV6.Country(ip); err == nil {
-				primary = c
-			}
-		}
-		if primary.ISO == "" && primary.Name == "" && h.qqwry != nil {
-			if c, err := h.qqwry.Country(ip); err == nil {
-				primary = c
-			}
-		}
-		return primary, nil
-	}
-	// Supplements with ISO guard following order: geocn, czdbV4, czdbV6, qqwry
 	primaryISO := strings.ToUpper(primary.ISO)
-	var supplements []Country
-	if h.geocn != nil && h.isoMatches(h.geocn, ip, primaryISO) {
+	if h.geocn != nil && (primaryISO == "" || h.isoMatches(h.geocn, ip, primaryISO)) {
 		if c, err := h.geocn.Country(ip); err == nil {
 			supplements = append(supplements, c)
 		}
 	}
-	if h.czdbV4 != nil && h.isoMatches(h.czdbV4, ip, primaryISO) {
+	if h.czdbV4 != nil && (primaryISO == "" || h.isoMatches(h.czdbV4, ip, primaryISO)) {
 		if c, err := h.czdbV4.Country(ip); err == nil {
 			supplements = append(supplements, c)
 		}
 	}
-	if h.czdbV6 != nil && h.isoMatches(h.czdbV6, ip, primaryISO) {
+	if h.czdbV6 != nil && (primaryISO == "" || h.isoMatches(h.czdbV6, ip, primaryISO)) {
 		if c, err := h.czdbV6.Country(ip); err == nil {
 			supplements = append(supplements, c)
 		}
 	}
-	if h.qqwry != nil && h.isoMatches(h.qqwry, ip, primaryISO) {
+	if h.qqwry != nil && (primaryISO == "" || h.isoMatches(h.qqwry, ip, primaryISO)) {
 		if c, err := h.qqwry.Country(ip); err == nil {
 			supplements = append(supplements, c)
 		}
@@ -318,25 +309,23 @@ func (h *HybridReader) Country(ip net.IP) (Country, error) {
 
 // City returns merged city information from all sources
 func (h *HybridReader) City(ip net.IP) (City, error) {
-	if h.maxmind == nil && h.geocn == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil {
+	if h.maxmind == nil && h.geocn == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil && h.ip2location == nil {
 		return City{}, nil
 	}
-
-	// Country is determined by MaxMind; use it to branch CN/non-CN
 	var primaryISO string
-	if h.maxmind != nil {
+	if h.ip2location != nil {
+		if c, err := h.ip2location.Country(ip); err == nil {
+			primaryISO = strings.ToUpper(c.ISO)
+		}
+	}
+	if primaryISO == "" && h.maxmind != nil {
 		if c, err := h.maxmind.Country(ip); err == nil {
 			primaryISO = strings.ToUpper(c.ISO)
 		}
 	}
-	var maxmindCity City
-	if h.maxmind != nil {
-		maxmindCity, _ = h.maxmind.City(ip)
-	}
 	var main City
 	var supplements []City
 	if primaryISO == "CN" {
-		// CN: GeoCN primary, then czdbV4 -> czdbV6 -> qqwry (ISO guard)
 		if h.geocn != nil {
 			main, _ = h.geocn.City(ip)
 		}
@@ -355,22 +344,30 @@ func (h *HybridReader) City(ip net.IP) (City, error) {
 				supplements = append(supplements, c)
 			}
 		}
-		// Optionally use MaxMind as the last resort for missing fields if ISO matches
+		if h.ip2location != nil && h.isoMatches(h.ip2location, ip, primaryISO) {
+			if c, err := h.ip2location.City(ip); err == nil {
+				supplements = append(supplements, c)
+			}
+		}
 		if h.maxmind != nil && h.isoMatches(h.maxmind, ip, primaryISO) {
-			supplements = append(supplements, maxmindCity)
+			if c, err := h.maxmind.City(ip); err == nil {
+				supplements = append(supplements, c)
+			}
 		}
-		merged := mergeCityWithPriority(main, supplements...)
-		if h.maxmind != nil && (merged.Latitude == 0 && merged.Longitude == 0) &&
-			isCompatibleRegion(merged.RegionName, maxmindCity.RegionName, merged.RegionCode, maxmindCity.RegionCode) {
-			merged.Latitude = maxmindCity.Latitude
-			merged.Longitude = maxmindCity.Longitude
+		return mergeCityWithPriority(main, supplements...), nil
+	}
+
+	if h.ip2location != nil {
+		main, _ = h.ip2location.City(ip)
+		if h.maxmind != nil {
+			if c, err := h.maxmind.City(ip); err == nil {
+				supplements = append(supplements, c)
+			}
 		}
-		return merged, nil
+	} else if h.maxmind != nil {
+		main, _ = h.maxmind.City(ip)
 	}
-	// Non-CN: MaxMind primary; then geocn -> czdbV4 -> czdbV6 -> qqwry (ISO guard)
-	if h.maxmind != nil {
-		main = maxmindCity
-	}
+
 	if h.geocn != nil && h.isoMatches(h.geocn, ip, primaryISO) {
 		if c, err := h.geocn.City(ip); err == nil {
 			supplements = append(supplements, c)
@@ -391,17 +388,23 @@ func (h *HybridReader) City(ip net.IP) (City, error) {
 			supplements = append(supplements, c)
 		}
 	}
-	merged := mergeCityWithPriority(main, supplements...)
-	if h.maxmind != nil && (merged.Latitude == 0 && merged.Longitude == 0) &&
-		isCompatibleRegion(merged.RegionName, maxmindCity.RegionName, merged.RegionCode, maxmindCity.RegionCode) {
-		merged.Latitude = maxmindCity.Latitude
-		merged.Longitude = maxmindCity.Longitude
-	}
-	return merged, nil
+
+	return mergeCityWithPriority(main, supplements...), nil
 }
+
 
 // ASN returns merged ASN information from all sources
 func (h *HybridReader) ASN(ip net.IP) (ASN, error) {
+	if h.ip2locationASN != nil {
+		if asn, err := h.ip2locationASN.ASN(ip); err == nil && asn.AutonomousSystemNumber != 0 {
+			return asn, nil
+		}
+	}
+	if h.ip2location != nil {
+		if asn, err := h.ip2location.ASN(ip); err == nil && asn.AutonomousSystemNumber != 0 {
+			return asn, nil
+		}
+	}
 	if h.maxmind != nil {
 		return h.maxmind.ASN(ip)
 	}
@@ -410,17 +413,22 @@ func (h *HybridReader) ASN(ip net.IP) (ASN, error) {
 
 // ISP returns merged ISP information from all sources
 func (h *HybridReader) ISP(ip net.IP) (ISP, error) {
-	if h.maxmind == nil && h.geocn == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil {
+	if h.maxmind == nil && h.geocn == nil && h.czdbV4 == nil && h.czdbV6 == nil && h.qqwry == nil && h.ip2location == nil && h.ip2locationASN == nil {
 		return ISP{}, nil
 	}
 
-	// Use country (MaxMind) to branch CN/non-CN for primary
 	var primaryISO string
-	if h.maxmind != nil {
+	if h.ip2location != nil {
+		if c, err := h.ip2location.Country(ip); err == nil {
+			primaryISO = strings.ToUpper(c.ISO)
+		}
+	}
+	if primaryISO == "" && h.maxmind != nil {
 		if c, err := h.maxmind.Country(ip); err == nil {
 			primaryISO = strings.ToUpper(c.ISO)
 		}
 	}
+
 	var main ISP
 	var supplements []ISP
 	if primaryISO == "CN" {
@@ -442,6 +450,16 @@ func (h *HybridReader) ISP(ip net.IP) (ISP, error) {
 				supplements = append(supplements, i)
 			}
 		}
+		if h.ip2locationASN != nil {
+			if i, err := h.ip2locationASN.ISP(ip); err == nil {
+				supplements = append(supplements, i)
+			}
+		}
+		if h.ip2location != nil && h.isoMatches(h.ip2location, ip, primaryISO) {
+			if i, err := h.ip2location.ISP(ip); err == nil {
+				supplements = append(supplements, i)
+			}
+		}
 		if h.maxmind != nil && h.isoMatches(h.maxmind, ip, primaryISO) {
 			if i, err := h.maxmind.ISP(ip); err == nil {
 				supplements = append(supplements, i)
@@ -449,25 +467,46 @@ func (h *HybridReader) ISP(ip net.IP) (ISP, error) {
 		}
 		return mergeISPWithPriority(main, supplements...), nil
 	}
-	if h.maxmind != nil {
+
+	if h.ip2locationASN != nil {
+		main, _ = h.ip2locationASN.ISP(ip)
+		if h.maxmind != nil {
+			if i, err := h.maxmind.ISP(ip); err == nil {
+				supplements = append(supplements, i)
+			}
+		}
+		if h.ip2location != nil {
+			if i, err := h.ip2location.ISP(ip); err == nil {
+				supplements = append(supplements, i)
+			}
+		}
+	} else if h.maxmind != nil {
 		main, _ = h.maxmind.ISP(ip)
+		if h.ip2location != nil {
+			if i, err := h.ip2location.ISP(ip); err == nil {
+				supplements = append(supplements, i)
+			}
+		}
+	} else if h.ip2location != nil {
+		main, _ = h.ip2location.ISP(ip)
 	}
-	if h.geocn != nil && h.isoMatches(h.geocn, ip, primaryISO) {
+
+	if h.geocn != nil && (primaryISO == "" || h.isoMatches(h.geocn, ip, primaryISO)) {
 		if i, err := h.geocn.ISP(ip); err == nil {
 			supplements = append(supplements, i)
 		}
 	}
-	if h.czdbV4 != nil && h.isoMatches(h.czdbV4, ip, primaryISO) {
+	if h.czdbV4 != nil && (primaryISO == "" || h.isoMatches(h.czdbV4, ip, primaryISO)) {
 		if i, err := h.czdbV4.ISP(ip); err == nil {
 			supplements = append(supplements, i)
 		}
 	}
-	if h.czdbV6 != nil && h.isoMatches(h.czdbV6, ip, primaryISO) {
+	if h.czdbV6 != nil && (primaryISO == "" || h.isoMatches(h.czdbV6, ip, primaryISO)) {
 		if i, err := h.czdbV6.ISP(ip); err == nil {
 			supplements = append(supplements, i)
 		}
 	}
-	if h.qqwry != nil && h.isoMatches(h.qqwry, ip, primaryISO) {
+	if h.qqwry != nil && (primaryISO == "" || h.isoMatches(h.qqwry, ip, primaryISO)) {
 		if i, err := h.qqwry.ISP(ip); err == nil {
 			supplements = append(supplements, i)
 		}
@@ -475,35 +514,7 @@ func (h *HybridReader) ISP(ip net.IP) (ISP, error) {
 	return mergeISPWithPriority(main, supplements...), nil
 }
 
-// ConnectionType returns connection type, preferring GeoCN.mmdb for China mainland IPs
-func (h *HybridReader) ConnectionType(ip net.IP) (ConnectionType, error) {
-	var primaryISO string
-	if h.maxmind != nil {
-		if c, err := h.maxmind.Country(ip); err == nil {
-			primaryISO = strings.ToUpper(c.ISO)
-		}
-	}
-	if primaryISO == "CN" {
-		if h.geocn != nil {
-			if ct, err := h.geocn.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-				return ct, nil
-			}
-		}
-		if h.maxmind != nil {
-			return h.maxmind.ConnectionType(ip)
-		}
-		return ConnectionType{}, nil
-	}
-	if h.maxmind != nil {
-		if ct, err := h.maxmind.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
-			return ct, nil
-		}
-	}
-	if h.geocn != nil && h.isoMatches(h.geocn, ip, primaryISO) {
-		return h.geocn.ConnectionType(ip)
-	}
-	return ConnectionType{}, nil
-}
+
 
 // Network returns the containing network with ISO guard fallbacks.
 func (h *HybridReader) Network(ip net.IP) (*net.IPNet, error) {
@@ -582,8 +593,27 @@ func (h *HybridReader) Network(ip net.IP) (*net.IPNet, error) {
 	return bestNet, nil
 }
 
+
+// ConnectionType returns connection type information
+func (h *HybridReader) ConnectionType(ip net.IP) (ConnectionType, error) {
+	if h.ip2location != nil {
+		if ct, err := h.ip2location.ConnectionType(ip); err == nil && ct.ConnectionType != "" {
+			return ct, nil
+		}
+	}
+	if h.maxmind != nil {
+		return h.maxmind.ConnectionType(ip)
+	}
+	return ConnectionType{}, nil
+}
+
 // Proxy returns proxy information using the appropriate reader
 func (h *HybridReader) Proxy(ip net.IP) (Proxy, error) {
+	if h.ip2location != nil {
+		if p, err := h.ip2location.Proxy(ip); err == nil && p.IsProxy {
+			return p, nil
+		}
+	}
 	if h.maxmind != nil {
 		return h.maxmind.Proxy(ip)
 	}
@@ -592,14 +622,25 @@ func (h *HybridReader) Proxy(ip net.IP) (Proxy, error) {
 
 // isChinaMainlandIP checks if an IP belongs to China mainland
 func (h *HybridReader) isChinaMainlandIP(ip net.IP) bool {
+	if h.ip2location != nil {
+		country, err := h.ip2location.Country(ip)
+		if err == nil && strings.ToUpper(country.ISO) == "CN" {
+			return true
+		}
+		if err == nil && country.ISO != "" {
+			return false // definitely not CN
+		}
+	}
 	if h.maxmind != nil {
 		country, err := h.maxmind.Country(ip)
 		if err == nil && strings.ToUpper(country.ISO) == "CN" {
 			return true
 		}
 	}
-	return false
+	// Fallback to internal checks if databases are missing
+	return isChinaIPv4(ip) || isChinaIPv6(ip)
 }
+
 
 // isoMatches checks whether reader r reports the same country ISO as primaryISO.
 func (h *HybridReader) isoMatches(r Reader, ip net.IP, primaryISO string) bool {

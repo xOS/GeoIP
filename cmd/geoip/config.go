@@ -48,7 +48,9 @@ type DatabaseConfig struct {
 	ConnectionType string `json:"connection_type,omitempty"`
 
 	// IP2Location/IP2Proxy databases
-	IP2Proxy string `json:"ip2proxy,omitempty"`
+	IP2Location    string `json:"ip2location,omitempty"`
+	IP2LocationASN string `json:"ip2location_asn,omitempty"`
+	IP2Proxy       string `json:"ip2proxy,omitempty"`
 
 	// QQWry databases
 	QQWry string `json:"qqwry,omitempty"`
@@ -164,6 +166,7 @@ func generateExampleConfig(filename string) error {
 					ASN:            "data/GeoLite2-ASN.mmdb",
 					ISP:            "data/GeoIP2-ISP.mmdb",
 					ConnectionType: "data/GeoIP2-Connection-Type.mmdb",
+					IP2Location:    "data/IP2LOCATION-LITE-DB11.BIN",
 					IP2Proxy:       "data/IP2PROXY-LITE-PX12.BIN",
 					QQWry:          "data/qqwry.ipdb",
 					GeoCN:      "data/GeoCN.mmdb",
@@ -178,7 +181,7 @@ func generateExampleConfig(filename string) error {
 
 // overrideConfigWithFlags overrides config values with command line flags when provided
 func overrideConfigWithFlags(config *Config, countryFile, cityFile, asnFile, ispFile, connFile,
-	ip2proxyFile, qqwryFile, geocnFile, cz88v4File, cz88v6File *string, hybridMode, autoDetect *bool, listen, template *string,
+	ip2locationFile, ip2locationASNFile, ip2proxyFile, qqwryFile, geocnFile, cz88v4File, cz88v6File *string, hybridMode, autoDetect *bool, listen, template *string,
 	reverseLookup, portLookup *bool, cacheSize *int, profile *bool, headers multiValueFlag) {
 
 	// Override database paths if flags are provided
@@ -196,6 +199,12 @@ func overrideConfigWithFlags(config *Config, countryFile, cityFile, asnFile, isp
 		}
 		if *connFile != "" {
 			config.Databases.ConnectionType = *connFile
+		}
+		if *ip2locationFile != "" {
+			config.Databases.IP2Location = *ip2locationFile
+		}
+		if *ip2locationASNFile != "" {
+			config.Databases.IP2LocationASN = *ip2locationASNFile
 		}
 		if *ip2proxyFile != "" {
 			config.Databases.IP2Proxy = *ip2proxyFile
@@ -286,6 +295,8 @@ func (c *Config) resolveDatabasePaths(configDir string) {
 	c.Databases.ASN = resolvePath(configDir, c.Databases.ASN)
 	c.Databases.ISP = resolvePath(configDir, c.Databases.ISP)
 	c.Databases.ConnectionType = resolvePath(configDir, c.Databases.ConnectionType)
+	c.Databases.IP2Location = resolvePath(configDir, c.Databases.IP2Location)
+	c.Databases.IP2LocationASN = resolvePath(configDir, c.Databases.IP2LocationASN)
 	c.Databases.IP2Proxy = resolvePath(configDir, c.Databases.IP2Proxy)
 	c.Databases.QQWry = resolvePath(configDir, c.Databases.QQWry)
 	c.Databases.GeoCN = resolvePath(configDir, c.Databases.GeoCN)
@@ -309,6 +320,8 @@ func (c *Config) validateDatabasePaths() error {
 		{"ASN database", c.Databases.ASN},
 		{"ISP database", c.Databases.ISP},
 		{"connection type database", c.Databases.ConnectionType},
+		{"IP2Location database", c.Databases.IP2Location},
+		{"IP2LocationASN database", c.Databases.IP2LocationASN},
 		{"IP2Proxy database", c.Databases.IP2Proxy},
 		{"QQWry database", c.Databases.QQWry},
 		{"GeoCN.mmdb database", c.Databases.GeoCN},
@@ -343,7 +356,7 @@ func (c *Config) Validate() error {
 		db := c.Databases
 		if db.Country == "" && db.City == "" && db.ASN == "" &&
 			db.ISP == "" && db.ConnectionType == "" &&
-			db.IP2Proxy == "" && db.QQWry == "" &&
+			db.IP2Location == "" && db.IP2LocationASN == "" && db.IP2Proxy == "" && db.QQWry == "" &&
 			db.GeoCN == "" && db.CZ88v4 == "" && db.CZ88v6 == "" {
 			return fmt.Errorf("at least one database must be configured")
 		}

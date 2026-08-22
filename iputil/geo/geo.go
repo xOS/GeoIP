@@ -180,7 +180,7 @@ func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string,
 
 	// Create hybrid reader if we have both MaxMind and qqwry
 	if maxmindReader != nil && qqwryReader != nil {
-		hybridReader := NewHybridReader(maxmindReader, nil, nil, nil, qqwryReader)
+		hybridReader := NewHybridReader(maxmindReader, nil, nil, nil, qqwryReader, nil, nil)
 
 		// If we also have IP2 databases, combine with hybrid
 		if ip2Reader != nil {
@@ -215,13 +215,15 @@ func OpenWithAutoDetection(countryDB, cityDB string, asnDB string, ispDB string,
 	}
 }
 
-func OpenWithHybridMode(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB string, ip2proxyDB string, qqwryDB string, geocnMMDB string, czdbV4 string, czdbKey string, czdbV6 string) (Reader, error) {
+func OpenWithHybridMode(countryDB, cityDB string, asnDB string, ispDB string, connectiontypeDB string, ip2locationDB string, ip2locationASNDB string, ip2proxyDB string, qqwryDB string, geocnMMDB string, czdbV4 string, czdbKey string, czdbV6 string) (Reader, error) {
 	var country, city, asn, isp, connectiontype interface{}
 	var maxmindReader Reader
 	var qqwryReader Reader
 	var geocnReader Reader
 	var czdbV4Reader Reader
 	var czdbV6Reader Reader
+	var ip2locationReader Reader
+	var ip2locationASNReader Reader
 	var ip2proxyReader Reader
 
 	if countryDB != "" {
@@ -295,6 +297,18 @@ func OpenWithHybridMode(countryDB, cityDB string, asnDB string, ispDB string, co
 			geocnReader = reader.(Reader)
 		}
 	}
+	if ip2locationDB != "" {
+		reader, err := openDatabaseWithDebug(ip2locationDB, func(p string) (interface{}, error) { return CreateReader(p) }, "IP2Location BIN DB")
+		if err == nil {
+			ip2locationReader = reader.(Reader)
+		}
+	}
+	if ip2locationASNDB != "" {
+		reader, err := openDatabaseWithDebug(ip2locationASNDB, func(p string) (interface{}, error) { return CreateReader(p) }, "IP2Location ASN DB")
+		if err == nil {
+			ip2locationASNReader = reader.(Reader)
+		}
+	}
 	if ip2proxyDB != "" {
 		reader, err := openDatabaseWithDebug(ip2proxyDB, func(p string) (interface{}, error) { return CreateReader(p) }, "IP2Proxy BIN DB")
 		if err == nil {
@@ -302,7 +316,7 @@ func OpenWithHybridMode(countryDB, cityDB string, asnDB string, ispDB string, co
 		}
 	}
 
-	hybrid := NewHybridReader(maxmindReader, geocnReader, czdbV4Reader, czdbV6Reader, qqwryReader)
+	hybrid := NewHybridReader(maxmindReader, geocnReader, czdbV4Reader, czdbV6Reader, qqwryReader, ip2locationReader, ip2locationASNReader)
 	if ip2proxyReader != nil {
 		return NewCombinedReader(hybrid, ip2proxyReader), nil
 	}
@@ -394,6 +408,7 @@ func (g *geoip) City(ip net.IP) (City, error) {
 		city.Name = c
 	}
 	if len(record.Subdivisions) > 0 {
+		log.Printf("[DEBUG] MaxMind raw en=%q zh-CN=%q", record.Subdivisions[0].Names["en"], record.Subdivisions[0].Names["zh-CN"])
 		if c, exists := record.Subdivisions[0].Names["en"]; exists {
 			city.RegionName = c
 		}

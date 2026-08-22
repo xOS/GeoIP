@@ -14,6 +14,25 @@ type IP2LocationBinReader struct {
 	db *ip2location.DB
 }
 
+func cleanIP2LocString(s string) string {
+	if s == "-" || s == "" || strings.Contains(s, "This parameter is unavailable") || s == "Not_Supported" || s == "Please upgrade the data file" {
+		return ""
+	}
+	
+	// Filter out excessively broad Regional Internet Registry (RIR) names
+	lower := strings.ToLower(s)
+	if strings.Contains(lower, "asia pacific network information centre") ||
+		strings.Contains(lower, "ripe network coordination centre") ||
+		strings.Contains(lower, "american registry for internet numbers") ||
+		strings.Contains(lower, "latin american and caribbean") ||
+		strings.Contains(lower, "african network information centre") ||
+		lower == "apnic" || lower == "arin" || lower == "ripe" || lower == "lacnic" || lower == "afrinic" {
+		return ""
+	}
+	
+	return s
+}
+
 // NewIP2LocationBinReader creates a new IP2Location BIN reader
 func NewIP2LocationBinReader(binPath string) (*IP2LocationBinReader, error) {
 	if binPath == "" {
@@ -40,7 +59,8 @@ func (r *IP2LocationBinReader) Country(ip net.IP) (Country, error) {
 	}
 
 	var isEU *bool
-	if result.Country_short != "-" && result.Country_short != "" {
+	result.Country_short = cleanIP2LocString(result.Country_short)
+	if result.Country_short != "" {
 		// Simple EU check based on country code
 		euCountries := map[string]bool{
 			"AT": true, "BE": true, "BG": true, "HR": true, "CY": true, "CZ": true,
@@ -54,7 +74,7 @@ func (r *IP2LocationBinReader) Country(ip net.IP) (Country, error) {
 	}
 
 	return Country{
-		Name: result.Country_long,
+		Name: cleanIP2LocString(result.Country_long),
 		ISO:  result.Country_short,
 		IsEU: isEU,
 	}, nil
@@ -80,20 +100,21 @@ func (r *IP2LocationBinReader) City(ip net.IP) (City, error) {
 	}
 
 	var metroCode uint
-	if result.Areacode != "-" && result.Areacode != "" {
+	result.Areacode = cleanIP2LocString(result.Areacode)
+	if result.Areacode != "" {
 		if code, err := strconv.ParseUint(result.Areacode, 10, 32); err == nil {
 			metroCode = uint(code)
 		}
 	}
 
 	return City{
-		Name:       result.City,
+		Name:       cleanIP2LocString(result.City),
 		Latitude:   latitude,
 		Longitude:  longitude,
-		PostalCode: result.Zipcode,
-		Timezone:   result.Timezone,
+		PostalCode: cleanIP2LocString(result.Zipcode),
+		Timezone:   cleanIP2LocString(result.Timezone),
 		MetroCode:  metroCode,
-		RegionName: result.Region,
+		RegionName: cleanIP2LocString(result.Region),
 		RegionCode: "", // IP2Location doesn't provide region codes in standard format
 	}, nil
 }
@@ -110,7 +131,8 @@ func (r *IP2LocationBinReader) ASN(ip net.IP) (ASN, error) {
 	}
 
 	var asnNumber uint
-	if result.Asn != "-" && result.Asn != "" {
+	result.Asn = cleanIP2LocString(result.Asn)
+	if result.Asn != "" {
 		// Remove "AS" prefix if present
 		asnStr := strings.TrimPrefix(result.Asn, "AS")
 		if parsed, err := strconv.ParseUint(asnStr, 10, 32); err == nil {
@@ -120,7 +142,7 @@ func (r *IP2LocationBinReader) ASN(ip net.IP) (ASN, error) {
 
 	return ASN{
 		AutonomousSystemNumber:       asnNumber,
-		AutonomousSystemOrganization: result.As,
+		AutonomousSystemOrganization: cleanIP2LocString(result.As),
 	}, nil
 }
 
@@ -136,7 +158,8 @@ func (r *IP2LocationBinReader) ISP(ip net.IP) (ISP, error) {
 	}
 
 	var asnNumber uint
-	if result.Asn != "-" && result.Asn != "" {
+	result.Asn = cleanIP2LocString(result.Asn)
+	if result.Asn != "" {
 		asnStr := strings.TrimPrefix(result.Asn, "AS")
 		if parsed, err := strconv.ParseUint(asnStr, 10, 32); err == nil {
 			asnNumber = uint(parsed)
@@ -145,9 +168,9 @@ func (r *IP2LocationBinReader) ISP(ip net.IP) (ISP, error) {
 
 	return ISP{
 		ASN:          asnNumber,
-		ORG:          result.As,
-		ISP:          result.Isp,
-		Organization: result.As,
+		ORG:          cleanIP2LocString(result.As),
+		ISP:          cleanIP2LocString(result.Isp),
+		Organization: cleanIP2LocString(result.As),
 	}, nil
 }
 
@@ -163,7 +186,7 @@ func (r *IP2LocationBinReader) ConnectionType(ip net.IP) (ConnectionType, error)
 	}
 
 	return ConnectionType{
-		ConnectionType: result.Netspeed,
+		ConnectionType: cleanIP2LocString(result.Netspeed),
 	}, nil
 }
 
@@ -184,7 +207,8 @@ func (r *IP2LocationBinReader) Proxy(ip net.IP) (Proxy, error) {
 	proxyType := ""
 
 	// Check usage type for proxy indicators
-	if result.Usagetype != "-" && result.Usagetype != "" {
+	result.Usagetype = cleanIP2LocString(result.Usagetype)
+	if result.Usagetype != "" {
 		usageType := strings.ToUpper(result.Usagetype)
 		switch usageType {
 		case "DCH", "DCH/SES", "DCH/ISP":
@@ -201,8 +225,8 @@ func (r *IP2LocationBinReader) Proxy(ip net.IP) (Proxy, error) {
 		ProxyType:   proxyType,
 		Country:     result.Country_long,
 		CountryCode: result.Country_short,
-		Domain:      result.Domain,
-		UsageType:   result.Usagetype,
+		Domain:      cleanIP2LocString(result.Domain),
+		UsageType:   cleanIP2LocString(result.Usagetype),
 		LastSeen:    "",
 		Threat:      "",
 		Provider:    "",

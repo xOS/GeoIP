@@ -38,6 +38,8 @@ func main() {
 	asnFile := flag.String("a", "", "Path to GeoIP ASN database")
 	ispFile := flag.String("i", "", "Path to GeoIP ISP database")
 	connFile := flag.String("n", "", "Path to GeoIP2 Connection-Type database")
+	ip2locationFile := flag.String("ip2loc", "", "Path to IP2Location database (BIN)")
+	ip2locationASNFile := flag.String("ip2locasn", "", "Path to IP2Location ASN database (BIN)")
 	ip2proxyFile := flag.String("x", "", "Path to IP2Proxy database (BIN)")
 	qqwryFile := flag.String("q", "", "Path to qqwry database (.ipdb or .dat format)")
 		geocnFile := flag.String("g", "", "Path to GeoCN.mmdb database")
@@ -78,7 +80,7 @@ func main() {
 
 	// Override config with command line flags if provided
 	overrideConfigWithFlags(config, countryFile, cityFile, asnFile, ispFile, connFile,
-		ip2proxyFile, qqwryFile, geocnFile, cz88v4File, cz88v6File, hybridMode, autoDetect, listen, template,
+		ip2locationFile, ip2locationASNFile, ip2proxyFile, qqwryFile, geocnFile, cz88v4File, cz88v6File, hybridMode, autoDetect, listen, template,
 		reverseLookup, portLookup, cacheSize, profile, headers)
 
 	// Validate configuration
@@ -103,13 +105,15 @@ func main() {
 
 	if config.HybridMode && config.Databases.QQWry != "" {
 		// Use hybrid mode: czdb v4/v6 for China mainland, fallback to qqwry, MaxMind for others
-		log.Printf("[INFO] 启动混合查询模式(Hybrid Mode): 中国大陆 IP 优先使用 CZDB/QQWry/GeoCN，海外 IP 优先使用 MaxMind")
+		log.Printf("[INFO] 启动混合查询模式(Hybrid Mode): 中国大陆 IP 优先使用 CZDB/QQWry/GeoCN，海外 IP 优先使用 IP2Location/MaxMind，ASN 优先使用 IP2LocationASN")
 		r, err = geo.OpenWithHybridMode(
 			config.Databases.Country,
 			config.Databases.City,
 			config.Databases.ASN,
 			config.Databases.ISP,
 			config.Databases.ConnectionType,
+			config.Databases.IP2Location,
+			config.Databases.IP2LocationASN,
 			config.Databases.IP2Proxy,
 			config.Databases.QQWry,
 			config.Databases.GeoCN,
@@ -133,6 +137,8 @@ func main() {
 			{config.Databases.ASN, ""},
 			{config.Databases.ISP, ""},
 			{config.Databases.ConnectionType, ""},
+			{config.Databases.IP2Location, ""},
+			{config.Databases.IP2LocationASN, ""},
 			{config.Databases.IP2Proxy, ""},
 			{config.Databases.QQWry, ""},
 			{config.Databases.GeoCN, ""},

@@ -584,13 +584,10 @@ func TestLangZHUsesMaxMindCoordinates(t *testing.T) {
 	geocn := &stubReader{
 		country: geo.Country{Name: "中国", ISO: "CN"},
 		city: geo.City{
-			Name:      "GeoCN City",
-			Latitude:  34.7732,
-			Longitude: 113.7220,
-			Timezone:  "Asia/Shanghai",
+			Name: "GeoCN City",
 		},
 	}
-	hs := geo.NewHybridReader(maxmind, geocn, nil, nil, nil)
+	hs := geo.NewHybridReader(maxmind, geocn, nil, nil, nil, nil, nil)
 	srv := &Server{cache: NewCache(0), gr: hs, AllowCustomIP: true}
 	req := httptest.NewRequest("GET", "/json?ip=1.2.3.4&lang=zh", nil)
 	res := httptest.NewRecorder()
@@ -626,7 +623,7 @@ func TestLangZHFallsBackToGeoCNCoordinatesWhenMaxMindMissing(t *testing.T) {
 			Longitude: 113.7220,
 		},
 	}
-	hs := geo.NewHybridReader(maxmind, geocn, nil, nil, nil)
+	hs := geo.NewHybridReader(maxmind, geocn, nil, nil, nil, nil, nil)
 	srv := &Server{cache: NewCache(0), gr: hs, AllowCustomIP: true}
 	req := httptest.NewRequest("GET", "/json?ip=1.2.3.4&lang=zh", nil)
 	res := httptest.NewRecorder()
@@ -697,7 +694,7 @@ func TestNoCrossCountrySupplement(t *testing.T) {
 	kr := &krMaxmind{}
 	cn := &cnReader{}
 	// Compose a custom hybrid: we rely on exported constructor
-	hybrid := geo.NewHybridReader(kr, cn, cn, cn, cn)
+	hybrid := geo.NewHybridReader(kr, cn, cn, cn, cn, nil, nil)
 
 	srv := &Server{cache: NewCache(0), gr: hybrid}
 	r := httptest.NewRequest("GET", "/json?ip=61.251.99.186&lang=zh", nil)

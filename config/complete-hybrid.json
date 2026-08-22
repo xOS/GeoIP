@@ -24,6 +24,8 @@
     "asn": "../data/GeoLite2-ASN.mmdb",
     "isp": "../data/GeoIP2-ISP.mmdb",
     "connection_type": "../data/GeoIP2-Connection-Type.mmdb",
+    "ip2location": "../data/IP2LOCATION-LITE-DB11.BIN",
+    "ip2location_asn": "../data/IP2LOCATION-LITE-ASN.BIN",
     "ip2proxy": "../data/IP2PROXY-LITE-PX12.BIN",
     "qqwry": "../data/qqwry.ipdb",
     "geocn_mmdb": "../data/GeoCN.mmdb",

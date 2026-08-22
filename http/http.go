@@ -263,273 +263,12 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	var proxy geo.Proxy
 	var networkCIDR string
 
-	if hr, ok := s.gr.(interface {
-		GetMaxmind() geo.Reader
-		GetGeoCN() geo.Reader
-		GetCzdbV4() geo.Reader
-		GetCzdbV6() geo.Reader
-		GetQQWry() geo.Reader
-	}); ok && (lang == "zh" || lang == "en") {
-		// 使用 lang 参数时，优先使用指定库，然后用其他库补全缺失字段
-		if lang == "zh" {
-			// 当 lang=zh 时，对于中国大陆IP，GeoCN.mmdb优先级最高
-			// 判断是否为中国大陆IP
-			var isChinaIP bool
-			var maxmindCity geo.City
-			hasMaxmindCity := false
-			if hr.GetMaxmind() != nil {
-				if maxmindCountry, err := hr.GetMaxmind().Country(ip); err == nil && strings.ToUpper(maxmindCountry.ISO) == "CN" {
-					isChinaIP = true
-				}
-				if c, err := hr.GetMaxmind().City(ip); err == nil {
-					maxmindCity = c
-					hasMaxmindCity = true
-				}
-			}
-
-			if isChinaIP {
-				// 中国大陆IP：GeoCN.mmdb优先级最高，只有当GeoCN.mmdb字段为空时才用其他库填充
-				if hr.GetGeoCN() != nil {
-					country, _ = hr.GetGeoCN().Country(ip)
-					city, _ = hr.GetGeoCN().City(ip)
-					asn, _ = hr.GetGeoCN().ASN(ip)
-					isp, _ = hr.GetGeoCN().ISP(ip)
-					connectiontype, _ = hr.GetGeoCN().ConnectionType(ip)
-					proxy, _ = hr.GetGeoCN().Proxy(ip)
-
-				}
-
-				// 只有当GeoCN.mmdb的字段为空时，才用其他库补充
-				if country.Name == "" || country.ISO == "" {
-					var fallbackCountry geo.Country
-					if ip.To4() != nil && hr.GetCzdbV4() != nil {
-						fallbackCountry, _ = hr.GetCzdbV4().Country(ip)
-					} else if ip.To16() != nil && ip.To4() == nil && hr.GetCzdbV6() != nil {
-						fallbackCountry, _ = hr.GetCzdbV6().Country(ip)
-					} else if hr.GetQQWry() != nil {
-						fallbackCountry, _ = hr.GetQQWry().Country(ip)
-					}
-					if fallbackCountry.Name == "" && hr.GetMaxmind() != nil {
-						fallbackCountry, _ = hr.GetMaxmind().Country(ip)
-					}
-
-					if country.Name == "" && fallbackCountry.Name != "" {
-						country.Name = fallbackCountry.Name
-					}
-					if country.ISO == "" && fallbackCountry.ISO != "" {
-						country.ISO = fallbackCountry.ISO
-					}
-					if country.IsEU == nil && fallbackCountry.IsEU != nil {
-						country.IsEU = fallbackCountry.IsEU
-					}
-				}
-
-				// 补充城市信息
-				if city.Name == "" || city.RegionName == "" || city.Latitude == 0 || city.Longitude == 0 {
-					var fallbackCity geo.City
-					if ip.To4() != nil && hr.GetCzdbV4() != nil {
-						fallbackCity, _ = hr.GetCzdbV4().City(ip)
-					} else if ip.To16() != nil && ip.To4() == nil && hr.GetCzdbV6() != nil {
-						fallbackCity, _ = hr.GetCzdbV6().City(ip)
-					} else if hr.GetQQWry() != nil {
-						fallbackCity, _ = hr.GetQQWry().City(ip)
-					}
-					if (fallbackCity.Name == "" || fallbackCity.Latitude == 0) && hasMaxmindCity {
-						if fallbackCity.Name == "" && maxmindCity.Name != "" {
-							fallbackCity.Name = maxmindCity.Name
-						}
-						if fallbackCity.RegionName == "" && maxmindCity.RegionName != "" {
-							fallbackCity.RegionName = maxmindCity.RegionName
-						}
-						if fallbackCity.Latitude == 0 && (maxmindCity.Latitude != 0 || maxmindCity.Longitude != 0) {
-							fallbackCity.Latitude = maxmindCity.Latitude
-							fallbackCity.Longitude = maxmindCity.Longitude
-							fallbackCity.Timezone = maxmindCity.Timezone
-						}
-					}
-
-					if city.Name == "" && fallbackCity.Name != "" {
-						city.Name = fallbackCity.Name
-					}
-					if city.RegionName == "" && fallbackCity.RegionName != "" {
-						city.RegionName = fallbackCity.RegionName
-					}
-					if city.RegionCode == "" && fallbackCity.RegionCode != "" {
-						city.RegionCode = fallbackCity.RegionCode
-					}
-					if city.Latitude == 0 && fallbackCity.Latitude != 0 {
-						city.Latitude = fallbackCity.Latitude
-						city.Longitude = fallbackCity.Longitude
-					}
-					if city.Timezone == "" && fallbackCity.Timezone != "" {
-						city.Timezone = fallbackCity.Timezone
-					}
-					if city.PostalCode == "" && fallbackCity.PostalCode != "" {
-						city.PostalCode = fallbackCity.PostalCode
-					}
-				}
-
-				if hasMaxmindCity {
-					if maxmindCity.Latitude != 0 || maxmindCity.Longitude != 0 {
-						city.Latitude = maxmindCity.Latitude
-						city.Longitude = maxmindCity.Longitude
-					}
-					if maxmindCity.Timezone != "" {
-						city.Timezone = maxmindCity.Timezone
-					}
-				}
-
-				// 补充ISP信息
-				if isp.ISP == "" || isp.Organization == "" || isp.ASN == 0 {
-					var fallbackISP geo.ISP
-					if ip.To4() != nil && hr.GetCzdbV4() != nil {
-						fallbackISP, _ = hr.GetCzdbV4().ISP(ip)
-					} else if ip.To16() != nil && ip.To4() == nil && hr.GetCzdbV6() != nil {
-						fallbackISP, _ = hr.GetCzdbV6().ISP(ip)
-					} else if hr.GetQQWry() != nil {
-						fallbackISP, _ = hr.GetQQWry().ISP(ip)
-					}
-					if (fallbackISP.ISP == "" || fallbackISP.ASN == 0) && hr.GetMaxmind() != nil {
-						maxmindISP, _ := hr.GetMaxmind().ISP(ip)
-						if fallbackISP.ISP == "" && maxmindISP.ISP != "" {
-							fallbackISP.ISP = maxmindISP.ISP
-						}
-						if fallbackISP.Organization == "" && maxmindISP.Organization != "" {
-							fallbackISP.Organization = maxmindISP.Organization
-						}
-						if fallbackISP.ASN == 0 && maxmindISP.ASN != 0 {
-							fallbackISP.ASN = maxmindISP.ASN
-						}
-						if fallbackISP.ORG == "" && maxmindISP.ORG != "" {
-							fallbackISP.ORG = maxmindISP.ORG
-						}
-					}
-
-					if isp.ISP == "" && fallbackISP.ISP != "" {
-						isp.ISP = fallbackISP.ISP
-					}
-					if isp.Organization == "" && fallbackISP.Organization != "" {
-						isp.Organization = fallbackISP.Organization
-					}
-					if isp.ASN == 0 && fallbackISP.ASN != 0 {
-						isp.ASN = fallbackISP.ASN
-					}
-					if isp.ORG == "" && fallbackISP.ORG != "" {
-						isp.ORG = fallbackISP.ORG
-					}
-				}
-
-				// 补充ASN信息
-				if asn.AutonomousSystemNumber == 0 || asn.AutonomousSystemOrganization == "" {
-					var fallbackASN geo.ASN
-					if ip.To4() != nil && hr.GetCzdbV4() != nil {
-						fallbackASN, _ = hr.GetCzdbV4().ASN(ip)
-					} else if ip.To16() != nil && ip.To4() == nil && hr.GetCzdbV6() != nil {
-						fallbackASN, _ = hr.GetCzdbV6().ASN(ip)
-					} else if hr.GetQQWry() != nil {
-						fallbackASN, _ = hr.GetQQWry().ASN(ip)
-					}
-					if fallbackASN.AutonomousSystemNumber == 0 && hr.GetMaxmind() != nil {
-						fallbackASN, _ = hr.GetMaxmind().ASN(ip)
-					}
-
-					if asn.AutonomousSystemNumber == 0 && fallbackASN.AutonomousSystemNumber != 0 {
-						asn.AutonomousSystemNumber = fallbackASN.AutonomousSystemNumber
-					}
-					if asn.AutonomousSystemOrganization == "" && fallbackASN.AutonomousSystemOrganization != "" {
-						asn.AutonomousSystemOrganization = fallbackASN.AutonomousSystemOrganization
-					}
-				}
-
-				// 补充连接类型信息
-				if connectiontype.ConnectionType == "" {
-					var fallbackConnType geo.ConnectionType
-					if ip.To4() != nil && hr.GetCzdbV4() != nil {
-						fallbackConnType, _ = hr.GetCzdbV4().ConnectionType(ip)
-					} else if ip.To16() != nil && ip.To4() == nil && hr.GetCzdbV6() != nil {
-						fallbackConnType, _ = hr.GetCzdbV6().ConnectionType(ip)
-					} else if hr.GetQQWry() != nil {
-						fallbackConnType, _ = hr.GetQQWry().ConnectionType(ip)
-					}
-					if fallbackConnType.ConnectionType == "" && hr.GetMaxmind() != nil {
-						fallbackConnType, _ = hr.GetMaxmind().ConnectionType(ip)
-					}
-
-					if connectiontype.ConnectionType == "" && fallbackConnType.ConnectionType != "" {
-						connectiontype.ConnectionType = fallbackConnType.ConnectionType
-					}
-				}
-
-			} else {
-				// 非中国大陆IP：使用MaxMind为主
-				if hr.GetMaxmind() != nil {
-					country, _ = hr.GetMaxmind().Country(ip)
-					city, _ = hr.GetMaxmind().City(ip)
-					asn, _ = hr.GetMaxmind().ASN(ip)
-					isp, _ = hr.GetMaxmind().ISP(ip)
-					connectiontype, _ = hr.GetMaxmind().ConnectionType(ip)
-					proxy, _ = hr.GetMaxmind().Proxy(ip)
-
-				}
-
-			}
-
-			// 应用翻译（如果有lang参数且为中文）
-			if lang == "zh" {
-				country.Name = GetTranslatedCountryName(country.ISO, lang, country.Name)
-				city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, lang, city.RegionName)
-				city.Name = GetTranslatedCityName(country.ISO, city.Name, lang, city.Name)
-			}
-		} else if lang == "en" {
-			// 当 lang=en 时，只使用 MaxMind 库，不使用其他库补全
-			if hr.GetMaxmind() != nil {
-				country, _ = hr.GetMaxmind().Country(ip)
-				city, _ = hr.GetMaxmind().City(ip)
-				asn, _ = hr.GetMaxmind().ASN(ip)
-				isp, _ = hr.GetMaxmind().ISP(ip)
-				connectiontype, _ = hr.GetMaxmind().ConnectionType(ip)
-				proxy, _ = hr.GetMaxmind().Proxy(ip)
-
-				// 保留 MaxMind 原始结果，不做基于坐标的国家纠正，避免误判
-			}
-
-			// 用纯真库补全缺失的字段（如果有的话）
-			var fallbackReader geo.Reader
-			if hr.GetCzdbV4() != nil {
-				fallbackReader = hr.GetCzdbV4()
-			} else if hr.GetCzdbV6() != nil {
-				fallbackReader = hr.GetCzdbV6()
-			} else if hr.GetQQWry() != nil {
-				fallbackReader = hr.GetQQWry()
-			}
-
-			if fallbackReader != nil {
-				if isp.ISP == "" {
-					fallbackISP, _ := fallbackReader.ISP(ip)
-					if fallbackISP.ISP != "" {
-						isp = fallbackISP
-					}
-				}
-			}
-
-		}
-	} else {
-		// 之前的中国大陆 IP 逻辑不变（当没有 lang 参数时）
-		country, _ = s.gr.Country(ip)
-		city, _ = s.gr.City(ip)
-		asn, _ = s.gr.ASN(ip)
-		isp, _ = s.gr.ISP(ip)
-		connectiontype, _ = s.gr.ConnectionType(ip)
-		proxy, _ = s.gr.Proxy(ip)
-
-		// 如果有lang参数且为中文，应用翻译
-		if lang == "zh" {
-			country.Name = GetTranslatedCountryName(country.ISO, lang, country.Name)
-			city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, lang, city.RegionName)
-			city.Name = GetTranslatedCityName(country.ISO, city.Name, lang, city.Name)
-		}
-		// 如果lang参数为其他值或空字符串，默认返回英文结果，不应用任何翻译
-	}
+	country, _ = s.gr.Country(ip)
+	city, _ = s.gr.City(ip)
+	asn, _ = s.gr.ASN(ip)
+	isp, _ = s.gr.ISP(ip)
+	connectiontype, _ = s.gr.ConnectionType(ip)
+	proxy, _ = s.gr.Proxy(ip)
 
 	// 统一翻译策略：
 	// - 若 lang=zh，强制中文翻译
@@ -550,6 +289,42 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		country.Name = GetTranslatedCountryName(country.ISO, "zh", country.Name)
 		city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, "zh", city.RegionName)
 		city.Name = GetTranslatedCityName(country.ISO, city.Name, "zh", city.Name)
+	} else if strings.ToLower(lang) == "en" && strings.ToUpper(country.ISO) == "CN" {
+		// 国内 IP 且强制要求英文时，从原生英文库提取英文名覆盖中文
+		type readerProvider interface {
+			GetMaxmind() geo.Reader
+			GetIP2Location() geo.Reader
+			GetIP2LocationASN() geo.Reader
+		}
+		if provider, ok := s.gr.(readerProvider); ok {
+			if provider.GetIP2Location() != nil {
+				c, _ := provider.GetIP2Location().Country(ip)
+				if c.Name != "" { country.Name = c.Name }
+				ci, _ := provider.GetIP2Location().City(ip)
+				if ci.RegionName != "" { city.RegionName = ci.RegionName }
+				if ci.Name != "" { city.Name = ci.Name }
+			} else if provider.GetMaxmind() != nil {
+				c, _ := provider.GetMaxmind().Country(ip)
+				if c.Name != "" { country.Name = c.Name }
+				ci, _ := provider.GetMaxmind().City(ip)
+				if ci.RegionName != "" { city.RegionName = ci.RegionName }
+				if ci.Name != "" { city.Name = ci.Name }
+			}
+
+			if provider.GetMaxmind() != nil {
+				i, _ := provider.GetMaxmind().ISP(ip)
+				if i.ISP != "" { isp.ISP = i.ISP }
+				if i.Organization != "" { isp.Organization = i.Organization }
+			}
+			
+			if provider.GetIP2LocationASN() != nil {
+				i, _ := provider.GetIP2LocationASN().ISP(ip)
+				if i.ORG != "" { isp.ORG = i.ORG }
+			} else if provider.GetMaxmind() != nil {
+				i, _ := provider.GetMaxmind().ISP(ip)
+				if i.ORG != "" { isp.ORG = i.ORG }
+			}
+		}
 	}
 	if n, err := s.gr.Network(ip); err == nil && n != nil {
 		networkCIDR = n.String()

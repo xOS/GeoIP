@@ -191,3 +191,16 @@ func isValidISP(isp ISP) bool {
 func isValidConnectionType(connType ConnectionType) bool {
 	return connType.ConnectionType != "" && connType.ConnectionType != "-"
 }
+func (c *CombinedReader) GetIP2Location() Reader {
+	if hr, ok := c.geoip.(interface{ GetIP2Location() Reader }); ok {
+		return hr.GetIP2Location()
+	}
+	return nil
+}
+
+func (c *CombinedReader) GetIP2LocationASN() Reader {
+	if hr, ok := c.geoip.(interface{ GetIP2LocationASN() Reader }); ok {
+		return hr.GetIP2LocationASN()
+	}
+	return nil
+}
