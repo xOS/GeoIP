@@ -295,7 +295,7 @@
     safeUpdateInfoItemByLabel('邮编', data.zip_code);
     // 安全地更新经纬度信息
     if (data.latitude !== undefined && data.longitude !== undefined) {
-      safeUpdateInfoItemByLabel('经纬度', data.latitude + ',' + data.longitude);
+      safeUpdateInfoItemByLabel('经纬度', Number(data.latitude).toFixed(3) + ',' + Number(data.longitude).toFixed(3));
     } else {
       safeUpdateInfoItemByLabel('经纬度', '');
     }

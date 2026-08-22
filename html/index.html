@@ -101,7 +101,7 @@
           </div>
           <div class="info-item">
             <span class="info-label">经纬度</span>
-            <span class="info-value">{{ .Latitude }},{{ .Longitude }}</span>
+            <span class="info-value">{{ printf "%.3f" .Latitude }},{{ printf "%.3f" .Longitude }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">ASN</span>
@@ -202,10 +202,10 @@
     <!-- 底部信息 -->
     <footer class="footer">
       <p>
-        本站由 <a href="https://www.maxmind.com" target="_blank">MaxMind</a> ·
+        本站由 <a href="https://www.ip2location.com" target="_blank">IP2Location</a> · <a href="https://www.maxmind.com" target="_blank">MaxMind</a> ·
         <a href="https://www.cz88.net" target="_blank">纯真CZ88</a> 提供数据支持
       </p>
-      <p>本站由 <a href="https://www.nange.cn" target="_blank">楠格</a> 运营维护</p>
+      <p>本站由 <a href="https://aapls.com" target="_blank">春夏</a> 运营维护</p>
     </footer>
 
   </div>
