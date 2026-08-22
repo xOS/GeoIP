@@ -9,3 +9,5 @@
 /data
 /complete-hybrid.json
 /czdb-only.json
+scripts/update_databases.sh
+vendor

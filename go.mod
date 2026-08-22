@@ -6,7 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/ip2location/ip2location-go/v9 v9.7.1
-	github.com/ip2location/ip2proxy-go/v4 v4.1.0
+	github.com/ip2location/ip2proxy-go/v4 v4.2.0
 	github.com/ipipdotnet/ipdb-go v1.3.3
 	github.com/oschwald/maxminddb-golang v1.9.0
 	github.com/tagphi/czdb-search-golang v1.0.4
