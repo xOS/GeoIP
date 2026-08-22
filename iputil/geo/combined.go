@@ -1,6 +1,7 @@
 package geo
 
 import (
+	"strings"
 	"net"
 )
 
@@ -171,12 +172,12 @@ func (c *CombinedReader) GetQQWry() Reader {
 
 // Helper functions to validate if data is meaningful
 func isValidCountry(country Country) bool {
-	return country.Name != "" && country.Name != "-" &&
+	return country.Name != "" && country.Name != "-" && !strings.Contains(strings.ToLower(country.Name), "ipv6 address missing in ipv4 bin") &&
 		country.ISO != "" && country.ISO != "-"
 }
 
 func isValidCity(city City) bool {
-	return city.Name != "" && city.Name != "-"
+	return city.Name != "" && city.Name != "-" && !strings.Contains(strings.ToLower(city.Name), "ipv6 address missing in ipv4 bin")
 }
 
 func isValidASN(asn ASN) bool {

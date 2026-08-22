@@ -15,6 +15,14 @@ type IP2ProxyBinReader struct {
 }
 
 // NewIP2ProxyBinReader creates a new IP2Proxy BIN reader
+// cleanIP2ProxyString cleans proxy strings
+func cleanIP2ProxyString(s string) string {
+	if s == "-" || s == "" || strings.Contains(s, "This parameter is unavailable") || s == "Not_Supported" || s == "Please upgrade the data file" || strings.Contains(strings.ToLower(s), "ipv6 address missing in ipv4 bin") {
+		return ""
+	}
+	return s
+}
+
 func NewIP2ProxyBinReader(binPath string) (*IP2ProxyBinReader, error) {
 	if binPath == "" {
 		return &IP2ProxyBinReader{}, nil
@@ -40,8 +48,8 @@ func (r *IP2ProxyBinReader) Country(ip net.IP) (Country, error) {
 	}
 
 	return Country{
-		Name: result.CountryLong,
-		ISO:  result.CountryShort,
+		Name: cleanIP2ProxyString(result.CountryLong),
+		ISO:  cleanIP2ProxyString(result.CountryShort),
 		IsEU: nil, // IP2Proxy doesn't provide EU information
 	}, nil
 }
@@ -58,8 +66,8 @@ func (r *IP2ProxyBinReader) City(ip net.IP) (City, error) {
 	}
 
 	return City{
-		Name:       result.City,
-		RegionName: result.Region,
+		Name:       cleanIP2ProxyString(result.City),
+		RegionName: cleanIP2ProxyString(result.Region),
 		RegionCode: "", // IP2Proxy doesn't provide region codes
 		Latitude:   0,  // IP2Proxy doesn't provide coordinates in basic format
 		Longitude:  0,  // IP2Proxy doesn't provide coordinates in basic format
@@ -134,7 +142,7 @@ func (r *IP2ProxyBinReader) ConnectionType(ip net.IP) (ConnectionType, error) {
 	}
 
 	return ConnectionType{
-		ConnectionType: result.UsageType,
+		ConnectionType: cleanIP2ProxyString(result.UsageType),
 	}, nil
 }
 
@@ -153,14 +161,14 @@ func (r *IP2ProxyBinReader) Proxy(ip net.IP) (Proxy, error) {
 
 	return Proxy{
 		IsProxy:     isProxy,
-		ProxyType:   result.ProxyType,
-		Country:     result.CountryLong,
-		CountryCode: result.CountryShort,
-		Domain:      result.Domain,
-		UsageType:   result.UsageType,
-		LastSeen:    result.LastSeen,
-		Threat:      result.Threat,
-		Provider:    result.Provider,
+		ProxyType:   cleanIP2ProxyString(result.ProxyType),
+		Country:     cleanIP2ProxyString(result.CountryLong),
+		CountryCode: cleanIP2ProxyString(result.CountryShort),
+		Domain:      cleanIP2ProxyString(result.Domain),
+		UsageType:   cleanIP2ProxyString(result.UsageType),
+		LastSeen:    cleanIP2ProxyString(result.LastSeen),
+		Threat:      cleanIP2ProxyString(result.Threat),
+		Provider:    cleanIP2ProxyString(result.Provider),
 		FraudScore:  "", // Convert if available
 	}, nil
 }
