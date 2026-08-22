@@ -15,7 +15,7 @@ type IP2LocationBinReader struct {
 }
 
 func cleanIP2LocString(s string) string {
-	if s == "-" || s == "" || strings.Contains(s, "This parameter is unavailable") || s == "Not_Supported" || s == "Please upgrade the data file" {
+	if s == "-" || s == "" || strings.Contains(s, "This parameter is unavailable") || s == "Not_Supported" || s == "Please upgrade the data file" || strings.Contains(strings.ToLower(s), "ipv6 address missing in ipv4 bin") {
 		return ""
 	}
 	
