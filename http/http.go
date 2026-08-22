@@ -355,22 +355,8 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 	if isp.ASN > 0 {
 		ispASN = fmt.Sprintf("AS%d", isp.ASN)
 	}
-	// Optimize and humanize IP2Location usage types to match MaxMind's readable style
+	// 保持原样
 	connTypeHuman := connectiontype.ConnectionType
-	switch connTypeHuman {
-	case "COM": connTypeHuman = "Commercial"
-	case "ORG": connTypeHuman = "Organization"
-	case "GOV": connTypeHuman = "Government"
-	case "MIL": connTypeHuman = "Military"
-	case "EDU": connTypeHuman = "Education"
-	case "LIB": connTypeHuman = "Library"
-	case "CDN": connTypeHuman = "Content Delivery Network"
-	case "ISP": connTypeHuman = "Fixed Line ISP"
-	case "MOB": connTypeHuman = "Mobile ISP"
-	case "DCH": connTypeHuman = "Data Center/Hosting"
-	case "SES": connTypeHuman = "Search Engine Spider"
-	case "RSV": connTypeHuman = "Reserved"
-	}
 	
 	// 清理代理字段，避免显示 "-"
 	proxyType := cleanProxyField(proxy.ProxyType)
