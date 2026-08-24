@@ -302,8 +302,6 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 				}
 			}
 		}
-		
-		country.Name = "China" // 对于中国IP固定翻译
 
 		// 国内 IP 且强制要求英文时，如果字典未能提供翻译，从原生英文库提取英文名覆盖中文
 		type readerProvider interface {
@@ -311,14 +309,23 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 			GetIP2Location() geo.Reader
 			GetIP2LocationASN() geo.Reader
 		}
+		
+		var fallbackCountryName string
+		
 		if provider, ok := s.gr.(readerProvider); ok {
 			if provider.GetIP2Location() != nil {
+				c, _ := provider.GetIP2Location().Country(ip)
+				if c.Name != "" { fallbackCountryName = c.Name }
+				
 				if !translated {
 					ci, _ := provider.GetIP2Location().City(ip)
 					if ci.RegionName != "" { city.RegionName = ci.RegionName }
 					if ci.Name != "" { city.Name = ci.Name }
 				}
 			} else if provider.GetMaxmind() != nil {
+				c, _ := provider.GetMaxmind().Country(ip)
+				if c.Name != "" { fallbackCountryName = c.Name }
+				
 				if !translated {
 					ci, _ := provider.GetMaxmind().City(ip)
 					if ci.RegionName != "" { city.RegionName = ci.RegionName }
@@ -339,6 +346,13 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 				i, _ := provider.GetMaxmind().ISP(ip)
 				if i.ORG != "" { isp.ORG = i.ORG }
 			}
+		}
+		
+		if fallbackCountryName != "" {
+			country.Name = fallbackCountryName
+		} else {
+			// 如果提取不到，则使用翻译管理器兜底（默认为 China）
+			country.Name = GetTranslatedCountryName(country.ISO, "en", "China")
 		}
 	}
 	if n, err := s.gr.Network(ip); err == nil && n != nil {
