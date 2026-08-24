@@ -290,7 +290,22 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		city.RegionName = GetTranslatedRegionName(country.ISO, city.RegionName, "zh", city.RegionName)
 		city.Name = GetTranslatedCityName(country.ISO, city.Name, "zh", city.Name)
 	} else if strings.ToLower(lang) == "en" && strings.ToUpper(country.ISO) == "CN" {
-		// 国内 IP 且强制要求英文时，从原生英文库提取英文名覆盖中文
+		// 国内 IP 且要求英文时，优先使用内置字典 division_codes.json 翻译
+		translated := false
+		if city.DivisionCode != "" && geo.GeoCNDivisionMap != nil {
+			if langs, ok := geo.GeoCNDivisionMap[city.DivisionCode]; ok {
+				if enNames, ok := langs["en"]; ok && len(enNames) >= 3 {
+					city.RegionName = enNames[0]
+					city.Name = enNames[1]
+					city.District = enNames[2]
+					translated = true
+				}
+			}
+		}
+		
+		country.Name = "China" // 对于中国IP固定翻译
+
+		// 国内 IP 且强制要求英文时，如果字典未能提供翻译，从原生英文库提取英文名覆盖中文
 		type readerProvider interface {
 			GetMaxmind() geo.Reader
 			GetIP2Location() geo.Reader
@@ -298,17 +313,17 @@ func (s *Server) newResponse(r *http.Request) (Response, error) {
 		}
 		if provider, ok := s.gr.(readerProvider); ok {
 			if provider.GetIP2Location() != nil {
-				c, _ := provider.GetIP2Location().Country(ip)
-				if c.Name != "" { country.Name = c.Name }
-				ci, _ := provider.GetIP2Location().City(ip)
-				if ci.RegionName != "" { city.RegionName = ci.RegionName }
-				if ci.Name != "" { city.Name = ci.Name }
+				if !translated {
+					ci, _ := provider.GetIP2Location().City(ip)
+					if ci.RegionName != "" { city.RegionName = ci.RegionName }
+					if ci.Name != "" { city.Name = ci.Name }
+				}
 			} else if provider.GetMaxmind() != nil {
-				c, _ := provider.GetMaxmind().Country(ip)
-				if c.Name != "" { country.Name = c.Name }
-				ci, _ := provider.GetMaxmind().City(ip)
-				if ci.RegionName != "" { city.RegionName = ci.RegionName }
-				if ci.Name != "" { city.Name = ci.Name }
+				if !translated {
+					ci, _ := provider.GetMaxmind().City(ip)
+					if ci.RegionName != "" { city.RegionName = ci.RegionName }
+					if ci.Name != "" { city.Name = ci.Name }
+				}
 			}
 
 			if provider.GetMaxmind() != nil {

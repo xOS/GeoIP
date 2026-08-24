@@ -1,0 +1,10 @@
+{
+  "listen_address": ":1212",
+  "template_dir": "../html",
+  "databases": {
+    "country": "../data/GeoLite2-Country.mmdb",
+    "city": "../data/GeoLite2-City.mmdb",
+    "asn": "../data/GeoLite2-ASN.mmdb",
+    "isp": "../data/GeoIP2-ISP.mmdb"
+  }
+}

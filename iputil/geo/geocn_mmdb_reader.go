@@ -13,11 +13,12 @@ import (
 
 // GeoCNDivisionCodesFile is the path to the gb2260 division codes mapping file
 var GeoCNDivisionCodesFile string = "division_codes.json"
+var GeoCNDivisionMap map[string]map[string][]string
 
 // GeoCNMMDBReader implements the Reader interface for GeoCN.mmdb database
 type GeoCNMMDBReader struct {
 	reader      *maxminddb.Reader
-	divisionMap map[string][]string
+	divisionMap map[string]map[string][]string
 }
 
 // GeoCNRecord represents the structure of records in GeoCN.mmdb
@@ -91,7 +92,7 @@ func NewGeoCNMMDBReader(path string) (*GeoCNMMDBReader, error) {
 		return nil, err
 	}
 
-	divMap := make(map[string][]string)
+	divMap := make(map[string]map[string][]string)
 	if GeoCNDivisionCodesFile != "" {
 		if b, err := os.ReadFile(GeoCNDivisionCodesFile); err == nil {
 			if err := json.Unmarshal(b, &divMap); err == nil {
@@ -104,6 +105,7 @@ func NewGeoCNMMDBReader(path string) (*GeoCNMMDBReader, error) {
 		}
 	}
 
+	GeoCNDivisionMap = divMap
 	return &GeoCNMMDBReader{
 		reader:      reader,
 		divisionMap: divMap,
@@ -148,10 +150,13 @@ func (g *GeoCNMMDBReader) City(ip net.IP) (City, error) {
 	if city.RegionName == "" && city.Name == "" && city.District == "" && g.divisionMap != nil {
 		divCode := extractGeoCode(record.DivisionCode)
 		if divCode != "" {
-			if names, ok := g.divisionMap[divCode]; ok && len(names) >= 3 {
-				city.RegionName = names[0]
-				city.Name = names[1]
-				city.District = names[2]
+			city.DivisionCode = divCode
+			if langs, ok := g.divisionMap[divCode]; ok {
+				if names, ok := langs["zh-CN"]; ok && len(names) >= 3 {
+					city.RegionName = names[0]
+					city.Name = names[1]
+					city.District = names[2]
+				}
 			}
 		}
 	}

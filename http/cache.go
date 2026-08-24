@@ -181,4 +181,3 @@ func (c *Cache) Stats() CacheStats {
 		Evictions: c.evictions,
 	}
 }
-

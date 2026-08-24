@@ -31,6 +31,7 @@ type City struct {
 	RegionName string `json:"region,omitempty"`
 	RegionCode string `json:"region_code,omitempty"`
 	District   string `json:"district,omitempty"`
+	DivisionCode string
 	Latitude   float64
 	Longitude  float64
 	PostalCode string
